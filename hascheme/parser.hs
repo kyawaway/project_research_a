@@ -1,8 +1,11 @@
 module Main where
 import System.Environment
+import System.IO
 import Text.ParserCombinators.Parsec hiding (spaces)
 import Control.Monad
 
+
+-- data type
 
 data LispVal = Atom String
   | List [LispVal]
@@ -10,6 +13,26 @@ data LispVal = Atom String
   | Number Integer
   | String String
   | Bool Bool
+
+
+
+
+showVal :: LispVal -> String
+showVal (List contents) = "(" ++ unwordsList contents ++ ")"
+showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom name) = name
+showVal (Number contents) = show contents
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#f" 
+
+---- helper
+
+unwordsList :: [LispVal] -> String
+unwordsList = unwords . map showVal
+
+instance Show LispVal where show = showVal
+
 
 
 symbol :: Parser Char
@@ -35,18 +58,10 @@ parseAtom = do first <- letter <|> symbol
                  "#f" -> Bool False
                  _    -> Atom atom
 
-parseNumber :: Parser LispVal
-parseNumber = liftM (Number . read) $ many1 digit
 
-parseExpr :: Parser LispVal
-parseExpr = parseAtom
-        <|> parseString
-        <|> parseNumber
-        <|> parseQuoted
-        <|> do char '('
-               x <- try parseList <|> parseDottedList
-               char ')'
-               return x
+parseNumber :: Parser LispVal
+parseNumber = many1 digit >>= return . Number . read
+
 
 
 parseList :: Parser LispVal
@@ -65,20 +80,52 @@ parseQuoted = do
   return $ List [Atom "quote", x]
   
 
+-- REPL
+
+-- read
+
+readExpr :: String -> LispVal
+readExpr input = case (parse parseExpr "lisp" input) of
+  Left err -> Atom $ "No match: " ++ show err
+  Right val ->  val
 
 
-readExpr :: String -> String
-readExpr input = case parse parseExpr "lisp" input of
-  Left err -> "No match: " ++ show err
-  Right _ -> "Found value"
+-- eval 
+
+parseExpr :: Parser LispVal
+parseExpr = parseAtom
+        <|> parseString
+        <|> parseNumber
+        <|> parseQuoted
+        <|> do char '(' 
+               x <- try parseList <|> parseDottedList
+               char ')' 
+               return x
+
+
+
+eval :: LispVal -> LispVal
+eval lispVal = lispVal
+
+readPrompt :: String -> IO String
+readPrompt  prompt = putStr prompt >> hFlush stdout >> getLine
+
+
+readEvalPrint :: String -> IO()
+readEvalPrint = putStrLn . show . eval . readExpr
+
+loopUntil :: (a -> Bool) -> IO a -> (a -> IO ()) -> IO ()
+loopUntil pred prompt action = do {
+  x <- prompt;
+  if pred x
+     then return ()
+     else (action x >> loopUntil pred prompt action)
+
+}
+
 
 main :: IO ()
-main = do
-  args <- getArgs
-  putStrLn (readExpr (args !! 0))
-
-
-
+main = loopUntil (== "quit") (readPrompt ">>") readEvalPrint
   
 
 
