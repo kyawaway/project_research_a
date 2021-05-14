@@ -1,23 +1,22 @@
-import System.Environment
-import Text.Parsec
-import Text.Parsec.Expr
-import qualified Text.Parsec.Token as TT
-import qualified Text.Parsec.Language as Lang
 
-type Parser a = Parsec String () a
-
+import System.IO
+import Control.Monad
+import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec.Expr
+import Text.ParserCombinators.Parsec.Language
+import qualified Text.ParserCombinators.Parsec.Token as Token
 
 -- ast 
-
-
 data Stmt = If BExpr Stmt Stmt 
           | Assign String AExpr 
           | Skip 
+          deriving (Eq,Show)
 
 
 
 data BExpr = Bool Bool 
           |  Greater AExpr AExpr
+          deriving (Eq,Show)
 
 
 data AExpr = Var String  
@@ -30,37 +29,37 @@ data AExpr = Var String
           | Fact AExpr
           | Negate AExpr
           deriving (Eq, Show)
--- lexer
 
-symbol :: String -> Parser String
-symbol = TT.symbol Lang.haskell
+reserveWord = 
+    emptyDef { Token.reservedNames = 
+        ["if"
+        ,"then"
+        ,"else"
+        ,"skip"
+        ,"true"
+        ,"false"
+    ]
+    ,Token.reservedOpNames = ["+", "-", "*", "/", ":=", "<", ">"]
+    }
 
-reserved :: String -> Parser()
-reserved = TT.reserved Lang.haskell 
+lexer = Token.makeTokenParser reserveWord
 
-reservedOp :: String -> Parser()
-reservedOp = TT.reservedOp Lang.haskell
-
-
-natural :: Parser Integer
-natural = TT.natural Lang.haskell
-
-whiteSpace :: Parser ()
-whiteSpace = TT.whiteSpace Lang.haskell
+idetifier = Token.identifier lexer
+reserved = Token.reserved lexer
+reservedOp = Token.reservedOp lexer
+parens = Token.parens lexer
+integer = Token.integer lexer
+whiteSpace = Token.whiteSpace lexer
 
 
+-- parse AExpr
 
--- parse
-
---  ( exp ) | num
 atom :: Parser AExpr
-atom = do symbol "("
-          x <- expr
-          symbol ")"
-          return x
-   <|> (Integer <$> natural)
+atom = do 
+    parens expr 
+    <|> (Integer <$> integer)
 
--- BExpr
+-- parse BExpr
 
 parseBExpr :: Parser BExpr 
 parseBExpr = parseBool 
@@ -75,9 +74,10 @@ parseTrue = string "true" >> return (Bool True)
 parseFalse :: Parser BExpr
 parseFalse = string "false" >> return (Bool False)
 
--- stmt
 
---if
+-- parse Stmt
+
+-- if 
 
 {-
 parseStmt :: Parser Stmt
@@ -95,14 +95,6 @@ parseIf = do reserved "if"
 
 -}
 
-
--- evaluate whole expressions 
-
-wholeExpr :: Parser AExpr
-wholeExpr = do whiteSpace
-               x <- expr
-               eof
-               return x
 
 
 -- operator
@@ -136,4 +128,3 @@ main = do putStrLn "Enter expression:"
             Right x -> do print x
                           print (eval x)
 
-          
