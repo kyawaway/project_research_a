@@ -76,13 +76,20 @@ parseFalse = string "false" >> return (Bool False)
 
 
 -- parse Stmt
+parseWhile :: Parser Stmt 
+parseWhile = whiteSpace >> stmt 
+
+stmt :: Parser Stmt 
+stmt = parens stmt 
+   <|> sequenceOfStmt
+
+sequenceOfStmt = do list 
+
+parseStmt :: Parser Stmt 
+parseStmt = parseIf 
+
 
 -- if 
-
-{-
-parseStmt :: Parser Stmt
-parseStmt = parseIf
-
 
 parseIf :: Parser Stmt
 parseIf = do reserved "if"
@@ -93,7 +100,7 @@ parseIf = do reserved "if"
              stmt2 <- parseStmt
              return $ if cond stmt1 stmt2 
 
--}
+
 
 
 
