@@ -1,4 +1,5 @@
 
+
 import System.IO
 import Control.Monad
 import Text.ParserCombinators.Parsec
@@ -7,19 +8,20 @@ import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 
 -- ast 
-data Stmt = If BExpr Stmt Stmt 
-          | Assign String AExpr 
-          | Skip 
+data Stmt = Seq [Stmt]
+          | If BExpr Stmt Stmt
+          | Assign String AExpr
+          | Skip
           deriving (Eq,Show)
 
 
 
-data BExpr = Bool Bool 
+data BExpr = Bool Bool
           |  Greater AExpr AExpr
           deriving (Eq,Show)
 
 
-data AExpr = Var String  
+data AExpr = Var String
           | Integer Integer
           | Add AExpr AExpr
           | Sub AExpr AExpr
@@ -30,8 +32,8 @@ data AExpr = Var String
           | Negate AExpr
           deriving (Eq, Show)
 
-reserveWord = 
-    emptyDef { Token.reservedNames = 
+reserveWord =
+    emptyDef { Token.reservedNames =
         ["if"
         ,"then"
         ,"else"
@@ -44,26 +46,39 @@ reserveWord =
 
 lexer = Token.makeTokenParser reserveWord
 
-idetifier = Token.identifier lexer
+identifier = Token.identifier lexer
 reserved = Token.reserved lexer
 reservedOp = Token.reservedOp lexer
 parens = Token.parens lexer
 integer = Token.integer lexer
 whiteSpace = Token.whiteSpace lexer
+semi = Token.semi lexer
 
 
 -- parse AExpr
 
-atom :: Parser AExpr
-atom = do 
-    parens expr 
-    <|> (Integer <$> integer)
+parseAExpr :: Parser AExpr
+parseAExpr = buildExpressionParser
+       [[binary "^" Pow AssocRight]
+       ,[binary "*" Mul AssocLeft, binary "/" Div AssocLeft]
+       ,[binary "+" Add AssocLeft, binary "-" Sub AssocLeft, prefix "-" Negate]
+       ]
+       aTerm
+  where
+    binary name fun assoc = Infix (reservedOp name >> return fun) assoc
+    prefix name fun = Prefix (fun <$ reservedOp name)
+
+aTerm :: Parser AExpr
+aTerm = parens parseAExpr
+    <|> Integer <$> integer
+
+
 
 -- parse BExpr
 
-parseBExpr :: Parser BExpr 
-parseBExpr = parseBool 
-
+parseBExpr :: Parser BExpr
+parseBExpr = parseBool
+    <|> parseRelation
 
 parseBool :: Parser BExpr
 parseBool = try parseTrue <|> try parseFalse
@@ -74,47 +89,53 @@ parseTrue = string "true" >> return (Bool True)
 parseFalse :: Parser BExpr
 parseFalse = string "false" >> return (Bool False)
 
+parseRelation =
+    do a1 <- parseAExpr
+       reservedOp ">"
+       a2 <- parseAExpr
+       return $ Greater a1 a2
+
 
 -- parse Stmt
-parseWhile :: Parser Stmt 
-parseWhile = whiteSpace >> stmt 
 
-stmt :: Parser Stmt 
-stmt = parens stmt 
+parseWhile :: Parser Stmt
+parseWhile = whiteSpace >> stmt
+
+stmt :: Parser Stmt
+stmt = parens stmt
    <|> sequenceOfStmt
 
-sequenceOfStmt = do list 
+sequenceOfStmt =
+    do list <- sepBy1 parseStmt semi
+       return $ if length list == 1 then head list else Seq list
 
-parseStmt :: Parser Stmt 
-parseStmt = parseIf 
+
+parseStmt :: Parser Stmt
+parseStmt = parseIf
+        <|> parseAssign
 
 
 -- if 
 
 parseIf :: Parser Stmt
-parseIf = do reserved "if"
-             cond <- parseBExpr
-             reserved "then"
-             stmt1 <- parseStmt 
-             reserved "else"
-             stmt2 <- parseStmt
-             return $ if cond stmt1 stmt2 
+parseIf =
+    do reserved "if"
+       cond <- parseBExpr 
+       reserved "then"
+       stmt1 <- parseStmt
+       reserved "else"
+       If cond stmt1 <$> parseStmt
+
+-- assign
+
+parseAssign :: Parser Stmt 
+parseAssign = 
+    do var <- identifier
+       reservedOp ":="
+       expr <- parseAExpr
+       return $ Assign var expr
 
 
-
-
-
--- operator
-expr :: Parser AExpr
-expr = buildExpressionParser
-       [[binary "^" Pow AssocRight]
-       ,[binary "*" Mul AssocLeft, binary "/" Div AssocLeft]
-       ,[binary "+" Add AssocLeft, binary "-" Sub AssocLeft, prefix "-" Negate]
-       ]
-       atom
-  where
-    binary name fun assoc = Infix (reservedOp name >> return fun) assoc
-    prefix name fun = Prefix (fun <$ reservedOp name)
 
 -- evaluate ast
 eval :: AExpr -> Integer
@@ -130,8 +151,8 @@ eval (Negate x) = - eval x
 main :: IO ()
 main = do putStrLn "Enter expression:"
           s <- getLine
-          case parse expr "stdin" s of
+          case parse parseStmt "stdin" s of
             Left err -> print err
             Right x -> do print x
-                          print (eval x)
+                         
 
