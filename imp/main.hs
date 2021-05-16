@@ -8,8 +8,11 @@ import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
 
 -- ast 
-data Stmt = Seq [Stmt]
-          | If BExpr Stmt Stmt
+
+-- data Stmt 
+
+data Command = Seq [Command]
+          | If BExpr Command Command
           | Assign String AExpr
           | Skip
           deriving (Eq,Show)
@@ -18,8 +21,10 @@ data Stmt = Seq [Stmt]
 
 data BExpr = Bool Bool
           |  Greater AExpr AExpr
+          |  Less AExpr AExpr
           deriving (Eq,Show)
 
+-- <greater|less> :: AExpr, AExpr -> Bool
 
 data AExpr = Var String
           | Integer Integer
@@ -31,6 +36,8 @@ data AExpr = Var String
           | Fact AExpr
           | Negate AExpr
           deriving (Eq, Show)
+
+
 
 reserveWord =
     emptyDef { Token.reservedNames =
@@ -54,6 +61,8 @@ integer = Token.integer lexer
 whiteSpace = Token.whiteSpace lexer
 semi = Token.semi lexer
 
+
+--parser
 
 -- parse AExpr
 
@@ -91,49 +100,55 @@ parseFalse = string "false" >> return (Bool False)
 
 parseRelation =
     do a1 <- parseAExpr
-       reservedOp ">"
+       relationOp <- makeRelationOp
        a2 <- parseAExpr
-       return $ Greater a1 a2
+       return $ relationOp a1 a2
 
+makeRelationOp = (reservedOp ">" >> return Greater)
+       <|> (reservedOp "<" >> return Less) 
 
 -- parse Stmt
 
-parseWhile :: Parser Stmt
-parseWhile = whiteSpace >> stmt
+parseWhile :: Parser Command
+parseWhile = whiteSpace >> command
 
-stmt :: Parser Stmt
-stmt = parens stmt
-   <|> sequenceOfStmt
+command :: Parser Command
+command = parens command
+   <|> sequenceOfCommand
 
-sequenceOfStmt =
-    do list <- sepBy1 parseStmt semi
+sequenceOfCommand =
+    do list <- sepBy1 parseCommand semi
        return $ if length list == 1 then head list else Seq list
 
 
-parseStmt :: Parser Stmt
-parseStmt = parseIf
+parseCommand :: Parser Command
+parseCommand = parseIf
         <|> parseAssign
 
 
 -- if 
 
-parseIf :: Parser Stmt
+parseIf :: Parser Command
 parseIf =
     do reserved "if"
        cond <- parseBExpr 
        reserved "then"
-       stmt1 <- parseStmt
+       stmt1 <- parseCommand
        reserved "else"
-       If cond stmt1 <$> parseStmt
+       If cond stmt1 <$> parseCommand
 
 -- assign
 
-parseAssign :: Parser Stmt 
+parseAssign :: Parser Command
 parseAssign = 
     do var <- identifier
        reservedOp ":="
        expr <- parseAExpr
        return $ Assign var expr
+
+
+
+-- evaluate
 
 
 
@@ -151,7 +166,7 @@ eval (Negate x) = - eval x
 main :: IO ()
 main = do putStrLn "Enter expression:"
           s <- getLine
-          case parse parseStmt "stdin" s of
+          case parse parseCommand "stdin" s of
             Left err -> print err
             Right x -> do print x
                          
