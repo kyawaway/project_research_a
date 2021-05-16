@@ -1,5 +1,3 @@
-
-
 import System.IO
 import Control.Monad
 import Text.ParserCombinators.Parsec
@@ -15,6 +13,8 @@ data Command = Seq [Command]
           | If BExpr Command Command
           | Assign String AExpr
           | Skip
+          | BExpr BExpr
+          | AExpr AExpr
           deriving (Eq,Show)
 
 
@@ -64,6 +64,7 @@ semi = Token.semi lexer
 
 --parser
 
+
 -- parse AExpr
 
 parseAExpr :: Parser AExpr
@@ -107,7 +108,7 @@ parseRelation =
 makeRelationOp = (reservedOp ">" >> return Greater)
        <|> (reservedOp "<" >> return Less) 
 
--- parse Stmt
+-- parse Command
 
 parseWhile :: Parser Command
 parseWhile = whiteSpace >> command
@@ -124,7 +125,8 @@ sequenceOfCommand =
 parseCommand :: Parser Command
 parseCommand = parseIf
         <|> parseAssign
-
+        <|> parseAExprCommand
+        <|> parseBExprCommand
 
 -- if 
 
@@ -146,21 +148,44 @@ parseAssign =
        expr <- parseAExpr
        return $ Assign var expr
 
+parseBExprCommand :: Parser Command
+parseBExprCommand = 
+    do expr <- parseBExpr
+       return $ BExpr expr 
 
+parseAExprCommand :: Parser Command
+parseAExprCommand = 
+    do expr <- parseAExpr
+       return $ AExpr expr 
 
 -- evaluate
 
 
 
 -- evaluate ast
-eval :: AExpr -> Integer
-eval (Integer x) = x
-eval (Add x y) = eval x + eval y
-eval (Sub x y) = eval x - eval y
-eval (Mul x y) = eval x * eval y
-eval (Div x y) = eval x `div` eval y
-eval (Pow x y) = eval x ^ eval y
-eval (Negate x) = - eval x
+
+evalCommand (If b x y ) = if evalBExpr b then evalCommand x else evalCommand y
+evalCommand (AExpr x) = evalAExpr x
+--evalCommand (BExpr b) = evalBExpr b
+
+
+evalBExpr :: BExpr -> Bool 
+evalBExpr (Bool True) = True
+evalBExpr (Bool False) = False 
+evalBExpr (Greater x y) = evalAExpr x > evalAExpr y
+evalBExpr (Less x y) = evalAExpr x < evalAExpr y
+
+
+
+evalAExpr :: AExpr -> Integer
+evalAExpr (Integer x) = x
+evalAExpr (Add x y) = evalAExpr x + evalAExpr y
+evalAExpr (Sub x y) = evalAExpr x - evalAExpr y
+evalAExpr (Mul x y) = evalAExpr x * evalAExpr y
+evalAExpr (Div x y) = evalAExpr x `div` evalAExpr y
+evalAExpr (Pow x y) = evalAExpr x ^ evalAExpr y
+evalAExpr (Negate x) = - evalAExpr x
+
 
 
 main :: IO ()
@@ -169,5 +194,7 @@ main = do putStrLn "Enter expression:"
           case parse parseCommand "stdin" s of
             Left err -> print err
             Right x -> do print x
+                          print (evalCommand x)
+
                          
 
