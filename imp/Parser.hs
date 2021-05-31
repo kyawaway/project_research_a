@@ -50,8 +50,7 @@ parseAExpr = buildExpressionParser
 aTerm :: Parser AExpr
 aTerm = parens parseAExpr
     <|> Integer <$> integer
-
-
+    <|> Id <$> identifier
 
 -- parse BExpr
 
@@ -79,9 +78,6 @@ makeRelationOp = (reservedOp ">" >> return Greater)
 
 -- parse Command
 
-parseWhile :: Parser Command
-parseWhile = whiteSpace >> command
-
 command :: Parser Command
 command = parens command
    <|> sequenceOfCommand
@@ -92,10 +88,14 @@ sequenceOfCommand =
 
 
 parseCommand :: Parser Command
-parseCommand = parseIfCommand
+parseCommand = parseSkipCommand 
+        <|> parseIfCommand
         <|> parseWhileCommand
         <|> parseAssignCommand
-        <|> parseAExprCommand
+
+-- skip 
+parseSkipCommand :: Parser Command 
+parseSkipCommand = reserved "skip" >> return Skip 
 
 -- if 
 
@@ -127,7 +127,7 @@ parseAssignCommand =
        expr <- parseAExpr
        return $ Assign var expr
 
-parseAExprCommand :: Parser Command
-parseAExprCommand = 
-    do expr <- parseAExpr
-       return $ AExpr expr 
+
+-- Parse Program
+parseWhileProgram :: Parser Command
+parseWhileProgram = whiteSpace >> command

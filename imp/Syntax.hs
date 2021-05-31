@@ -1,13 +1,11 @@
 module Syntax where 
 
-
-
+    
 data Command = Seq [Command]
           | If BExpr Command Command
           | While BExpr Command 
           | Assign String AExpr
           | Skip
-          | AExpr AExpr
           deriving (Eq,Show)
 
 -- Assign の String は Parser.parseAssign で 

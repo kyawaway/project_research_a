@@ -3,10 +3,10 @@ module Main where
 import System.IO
 import Control.Monad
 import Text.ParserCombinators.Parsec
+import Data.Map
 
 import Parser
 import Eval 
-
 
 {-
 -- repl 
@@ -23,7 +23,7 @@ readExpr s = case parse parseCommand "stdin" s of
             Right x -> x
 
 readEvalPrint :: String -> IO ()
-readEvalPrint = putStrLn . show . evalCommand . readExpr
+readEvalPrint = putStrLn . show . evalCommand Data.Map.empty readExpr
                     
 loopUntil :: (a -> Bool) -> IO a -> (a -> IO ()) -> IO ()
 loopUntil pred prompt action = do {
@@ -31,7 +31,7 @@ loopUntil pred prompt action = do {
     if pred x 
         then return ()
         else (action x >> loopUntil pred prompt action)
-}               
+               
 
 
 
@@ -42,10 +42,12 @@ main = do putStrLn "Enter expression:"
           loopUntil (== "quid") (readPrompt ">>") readEvalPrint               
 -}
 
+
 main :: IO ()
 main = do putStrLn "Enter expression:"
           s <- getLine
-          case parse parseCommand "stdin" s of
+          case parse parseWhileProgram "stdin" s of
             Left err -> print err
             Right x -> do print x
-                          print (evalCommand x)
+                          print (evalCommand  Data.Map.empty x)
+
