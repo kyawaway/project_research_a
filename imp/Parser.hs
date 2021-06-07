@@ -114,7 +114,7 @@ parseWhileCommand =
     do reserved "while"
        cond <- parseBExpr
        reserved "do"
-       stmt <- parseCommand
+       stmt <- command
        return $ While cond stmt
 
 
