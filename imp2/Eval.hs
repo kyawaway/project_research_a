@@ -1,7 +1,5 @@
 module Eval where
 
-import Parser 
-
 import Control.Exception
 import Control.Monad.Except 
 import Data.Typeable
@@ -22,33 +20,70 @@ evalStatement env (If b x y) = case evalExpr env b of
                                                 _ -> error "If statement expected type 'Bool' as Expr"
 
 evalStatement env (While e s) = case evalExpr env e of 
-                                                     TypeBool True ->  evalStatement env (Seq[s,(While e s)]) 
+                                                     TypeBool True ->  evalStatement env (Seq[s,While e s]) 
                                                      _ -> env
 
 evalStatement env (Assign x n) = setVal env x (evalExpr env n)   
 evalStatement env Skip = env 
 
 evalExpr :: Env -> Expr -> TypeEnv  
+
+-- Bool
+
 evalExpr env (Bool True) = TypeBool True
 evalExpr env (Bool False) = TypeBool False 
 
--- TypeEnv x = x みたいな関数が欲しいど返り値の型が複数種類(Integer, Bool)になる
+evalExpr env (Greater  x y) = case evalExpr env x of 
+                                TypeInteger a -> case evalExpr env y of 
+                                                 TypeInteger b -> TypeBool (a > b)
+                                _ -> error "TypeError in '>' "
 
-{-
-evalExpr env (Greater x y) = if (evalExpr env x == TypeInteger x) && (evalExpr env y == TypeInteger y) then TypeBool (x > y) else error "hoge"
-evalExpr env (Less x y) = if (evalExpr env x == TypeInteger x) && (evalExpr env y == TypeInteger y) then TypeBool (x < y) else error "hoge"
-evalExpr env (Equal x y) = if (evalExpr env x == TypeInteger x) && (evalExpr env y == TypeInteger y) then TypeBool (x == y) else error "hoge"
--}
+evalExpr env (Less  x y) = case evalExpr env x of 
+                                TypeInteger a -> case evalExpr env y of 
+                                                 TypeInteger b -> TypeBool (a < b)
+                                _ -> error "TypeError in '<' "
+
+
+evalExpr env (Equal x y) = case evalExpr env x of 
+                                TypeInteger a -> case evalExpr env y of 
+                                                   TypeInteger b -> TypeBool (a == b)
+                                _ -> error "TypeError in '==' "
+
+-- Integer 
+
 evalExpr env (Integer x) = TypeInteger x
 
-{-
-evalExpr env (Add x y) = if (evalExpr env x == TypeInteger x) && (evalExpr env y == TypeInteger y) then TypeInteger (x + y) else error "hoge"
-evalExpr env (Sub x y) = if (evalExpr env x == TypeInteger x) && (evalExpr env y == TypeInteger y) then TypeInteger (x - y) else error "hoge"
-evalExpr env (Mul x y) = if (evalExpr env x == TypeInteger x) && (evalExpr env y == TypeInteger y) then TypeInteger (x * y) else error "hoge"
-evalExpr env (Div x y) = if (evalExpr env x == TypeInteger x) && (evalExpr env y == TypeInteger y) then TypeInteger (div x y) else error "hoge"
-evalExpr env (Pow x y) = if (evalExpr env x == TypeInteger x) && (evalExpr env y == TypeInteger y) then TypeInteger (x ^ y) else error "hoge"
-evalExpr env (Negative x) = if evalExpr env x == TypeInteger x then TypeInteger (-x) else error "hoge"
--}
+evalExpr env (Add  x y) = case evalExpr env x of 
+                                TypeInteger a -> case evalExpr env y of 
+                                                 TypeInteger b -> TypeInteger  (a + b)
+                                _ -> error "TypeError in '+' "
+
+evalExpr env (Sub  x y) = case evalExpr env x of 
+                                TypeInteger a -> case evalExpr env y of 
+                                                 TypeInteger b -> TypeInteger  (a - b)
+                                _ -> error "TypeError in '-' "
+
+evalExpr env (Mul  x y) = case evalExpr env x of 
+                                TypeInteger a -> case evalExpr env y of 
+                                                 TypeInteger b -> TypeInteger  (a * b)
+                                _ -> error "TypeError in '*' "
+
+evalExpr env (Div  x y) = case evalExpr env x of 
+                                TypeInteger a -> case evalExpr env y of 
+                                                 TypeInteger b -> TypeInteger  (div a b)
+                                _ -> error "TypeError in '/' "
+
+evalExpr env (Pow  x y) = case evalExpr env x of 
+                                TypeInteger a -> case evalExpr env y of 
+                                                 TypeInteger b -> TypeInteger  (a ^ b)
+                                _ -> error "TypeError in '^' "
+
+evalExpr env (Negative x) = case evalExpr env x of 
+                              TypeInteger a -> TypeInteger (-a)
+                              _ -> error "TypeError in '-' "
 
 evalExpr env (Var  x) = test $ getVal env x
-evalExpr env _ = error "hoge"
+
+
+
+

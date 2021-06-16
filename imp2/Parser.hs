@@ -28,6 +28,7 @@ identifier = Token.identifier lexer
 reserved = Token.reserved lexer
 reservedOp = Token.reservedOp lexer
 parens = Token.parens lexer
+braces = Token.braces lexer 
 integer = Token.integer lexer
 whiteSpace = Token.whiteSpace lexer
 semi = Token.semi lexer
@@ -46,9 +47,10 @@ parseOp = buildExpressionParser
     binary name fun assoc = Infix (reservedOp name >> return fun) assoc
     prefix name fun = Prefix (fun <$ reservedOp name)
 
+-- 後で直す
 
 parseExpr :: Parser Expr 
-parseExpr = parens parseOp 
+parseExpr = parens parseOp
         <|> Integer <$> integer
         <|> parseBool
         <|> Var <$> identifier
@@ -73,6 +75,7 @@ statement :: Parser Statement
 statement = parens statement 
    <|> sequenceOfStatement 
 
+-- 後でなおす
 sequenceOfStatement  =
     do list <- sepBy1 parseStatement  semi
        return $ if length list == 1 then head list else Seq list
@@ -95,17 +98,17 @@ parseIfStatement  =
     do reserved "if"
        cond <- parseExpr 
        reserved "then"
-       stmt1 <- parseStatement 
+       stmt1 <- braces statement 
        reserved "else"
-       If cond stmt1 <$> parseStatement 
+       If cond stmt1 <$> braces statement  
 
 -- while 
 parseWhileStatement  :: Parser Statement 
 parseWhileStatement  = 
     do reserved "while"
-       cond <- parseExpr
+       cond <-  parseExpr
        reserved "do"
-       stmt <- statement
+       stmt <-  braces statement
        return $ While cond stmt
 
 
