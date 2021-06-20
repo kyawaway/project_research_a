@@ -17,7 +17,7 @@ import Parser
 
 type Env = Map String TypeEnv  
 
-data TypeEnv = TypeInteger Integer 
+data TypeEnv = Integer Integer 
              | TypeBool Bool
              deriving(Show)
 
