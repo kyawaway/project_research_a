@@ -14,12 +14,12 @@ import Parser
 type Env = Map String Integer 
 
 getVal :: Env -> String -> Maybe Integer 
-getVal env id  = lookup id env 
+getVal env var  = lookup var env 
 
 -- ()
 test :: Maybe Integer -> Integer 
 test (Just x) = x
-
+test Nothing = error "Not yet defined var"
 
 setVal :: Env -> String -> Integer -> Env 
-setVal env id val = insert id val env
+setVal env var val = insert var val env

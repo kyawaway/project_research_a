@@ -20,7 +20,7 @@ evalCommand env (Seq (h:t)) = let new_env = evalCommand env h in evalCommand new
 evalCommand env Skip = env 
 evalCommand env (If b x y) = if evalBExpr env b then evalCommand env x else evalCommand env y
 evalCommand env (Assign x n) = setVal env x (evalAExpr env n)   
-evalCommand env (While e s) = if evalBExpr env e then evalCommand env (Seq[s,(While e s)]) else env 
+evalCommand env (While e s) = if evalBExpr env e then evalCommand env (Seq[s,While e s]) else env 
 
 evalBExpr :: Env -> BExpr -> Bool 
 evalBExpr env (Bool True) = True
@@ -38,4 +38,4 @@ evalAExpr env (Mul x y) = evalAExpr env x * evalAExpr env y
 evalAExpr env (Div x y) = evalAExpr env x `div` evalAExpr env y
 evalAExpr env (Pow x y) = evalAExpr env x ^ evalAExpr env y
 evalAExpr env (Negate x) = - evalAExpr env x
-evalAExpr env (Id x) = test $ getVal env x 
+evalAExpr env (Var x) = test $ getVal env x 

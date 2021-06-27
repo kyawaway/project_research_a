@@ -28,6 +28,7 @@ identifier = Token.identifier lexer
 reserved = Token.reserved lexer
 reservedOp = Token.reservedOp lexer
 parens = Token.parens lexer
+braces = Token.braces lexer
 integer = Token.integer lexer
 whiteSpace = Token.whiteSpace lexer
 semi = Token.semi lexer
@@ -50,7 +51,7 @@ parseAExpr = buildExpressionParser
 aTerm :: Parser AExpr
 aTerm = parens parseAExpr
     <|> Integer <$> integer
-    <|> Id <$> identifier
+    <|> Var <$> identifier
 
 -- parse BExpr
 
@@ -102,19 +103,19 @@ parseSkipCommand = reserved "skip" >> return Skip
 parseIfCommand :: Parser Command
 parseIfCommand =
     do reserved "if"
-       cond <- parseBExpr 
+       cond <- parens parseBExpr 
        reserved "then"
-       stmt1 <- parseCommand
+       stmt1 <- braces parseCommand
        reserved "else"
-       If cond stmt1 <$> parseCommand
+       If cond stmt1 <$> braces parseCommand
 
 -- while 
 parseWhileCommand :: Parser Command
 parseWhileCommand = 
     do reserved "while"
-       cond <- parseBExpr
+       cond <- parens parseBExpr
        reserved "do"
-       stmt <- command
+       stmt <- braces command
        return $ While cond stmt
 
 

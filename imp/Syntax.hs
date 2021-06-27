@@ -19,7 +19,7 @@ data BExpr = Bool Bool
 
 -- <greater|less> :: AExpr, AExpr -> Bool
 
-data AExpr = Id String 
+data AExpr = Var String 
           | Integer Integer
           | Add AExpr AExpr
           | Sub AExpr AExpr
