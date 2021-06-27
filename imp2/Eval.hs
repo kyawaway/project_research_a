@@ -28,6 +28,8 @@ evalStatement env Skip = env
 
 evalExpr :: Env -> Expr -> TypeEnv  
 
+-- パターンマッチとエラー絶対もっといい書き方ある
+
 -- Bool
 
 evalExpr env (Bool True) = TypeBool True
