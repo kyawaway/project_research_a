@@ -4,6 +4,7 @@
 \usepackage{graphicx}
 \usepackage{ascmac}
 \usepackage{listings,jvlisting} 
+\usepackage{url}
 \usetheme{Darmstadt}
 %
 %
@@ -28,6 +29,13 @@
 \titlepage 
 \end{frame}
 
+\begin{frame}[fragile]{はじめに}
+    \large 進捗$\to$
+    \begin{verbatim}
+    \end{verbatim}
+    \url{https://github.com/tkyawa/project_research_a}
+\end{frame}
+
 \begin{frame}{abstract}
     Haskell のパーサコンビネータのParsec を用いた簡易なインタプリタの実装を通して，パーサコンビネータの雰囲気を学び，実際に構文の設計を行う．
 \end{frame}
@@ -39,12 +47,12 @@
 \section{モナディックパーサ概要}
 \subsection{Monadの概要}
 \begin{frame}[fragile]{Monadとは}
-    (Haskellの型クラスとしての)Monadとは・・・
-    \begin{lstlisting}[]
+    (Haskellの型クラスとしての)Monad・・・
+    \begin{verbatim}
     class Monad m where 
     (>>=) :: m a -> (a -> m b) -> m b 
     return :: a -> m a
-    \end{lstlisting}
+    \end{verbatim}
 \end{frame}
 
 \begin{frame}{Monadとは}
@@ -73,11 +81,18 @@
     \end{block}
 \end{frame}
 
-\begin{frame}{状態量を用いたMonad概要図①}
-    $\to$関数合成できない
+\begin{frame}[fragile]{状態量を用いたMonad概要図①}
+    \centering 
+    \includegraphics[scale=0.3]{mid1.png}
+    \begin{verbatim}
+    \end{verbatim}
+
+    $a \to T(b) , b \to T(c)$の関数合成はできない
 \end{frame}
 
 \begin{frame}{状態量を用いたMonad概要図②}
+    (図)
+
     bind,returnによって関数合成(っぽいこと)ができる
 \end{frame}
 
@@ -115,9 +130,14 @@ instance Monad (State s) where
 \end{frame}
 
 \begin{frame}[fragile]{Parser Monad ①}
-    パーサをMonadとして扱うことを考える
-
-    $\to$
+    パーサをMonadとして扱うことを考える．
+    \begin{verbatim}
+    Parser :: String -> AST
+                ↓
+    Parser :: String -> (AST, String)
+                ↓
+    Parser :: String -> (a, String)
+    \end{verbatim}
 \end{frame}
 
 \begin{frame}[fragile]{Parser Monad ②}
@@ -137,18 +157,11 @@ instance Monad Parser where
 
 \subsection{Parsec の各パーサについて}
 
-\begin{frame}[fragile]{Parsec の各パーサについて}
-    \begin{verbatim}
-    Parser :: String -> AST
-    \end{verbatim}
-\end{frame}
-
-
 \begin{frame}[fragile]{最小構成のパーサ}
 一文字を受理するパーサ
     \begin{verbatim}
-mono :: Parser Char
-mono = Parser $ \cs -> case cs of
+item :: Parser Char
+item = Parser $ \cs -> case cs of
                          ""     -> []
                          (c:cs') -> [(c,cs')]
     \end{verbatim}
@@ -161,7 +174,7 @@ failure = \inp -> []
 
 
 \begin{frame}{最小構成のパーサ}
-    各パーサは，bindにより合成可能
+    各パーサは，bindにより合成可能，do 記法が使用できる
 
 \end{frame}
 
@@ -192,8 +205,7 @@ failure = \inp -> []
     \begin{verbatim}
 expr :: Parser Expr
 expr = buildExpressionParser
-       [[binary "^" Pow AssocRight]
-       ,[binary "*" Mul AssocLeft, 
+       [[binary "*" Mul AssocLeft, 
         binary "/" Div AssocLeft]
        ,[binary "+" Add AssocLeft, 
         binary "-" Sub AssocLeft, prefix "-" Negate]
@@ -207,6 +219,7 @@ expr = buildExpressionParser
 
 \end{frame}
 
+
 \begin{frame}[fragile]{buildExpressionParser ②}
     つづき:
     \begin{verbatim}
@@ -219,20 +232,52 @@ atom = do symbol "("
     \end{verbatim}
 \end{frame}
 
+\begin{frame}[fragile]{buildExpressionParser を用いない実装}
+    一般的には...
+    \begin{itemize}
+    \item 構文段階orパース段階で再帰的な定義を与える
+    \item chainl等を用いる
+    \end{itemize}
+\end{frame}
+
 \begin{frame}{デモ①}
+    (いろんな四則演算)
 \end{frame}
 
 \subsection{}
 
 \begin{frame}{まとめ}
-    Parser Monad
+    ParserをMonadで実装することで，幅広いパーサ関数を実装できた
 \end{frame}
 
 \section{Parsec によるIMP の実装}
-\subsection{実装}
 
-\begin{frame}[fragile]{IMPの構文}
+\subsection{IMPの概要}
+
+\begin{frame}{IMP概要}
+    \Large IMP is a simple imperative language 
 \end{frame}
+
+\begin{frame}[fragile]{IMPの構文(BNF)}
+    \begin{verbatim}
+Command ::= seq Command Command 
+          | if BExpr then Command else Command
+          | while BExpr do Command
+          | String := AExpr
+          | Skip
+
+BExpr ::= true
+        | false
+        | AExpr < AExpr
+
+AExpr ::= integer 
+        | var
+        | AExpr + AExpr
+        | AExpr × AExpr
+    \end{verbatim}
+\end{frame}
+
+\subsection{実装}
 
 \begin{frame}[fragile]{全体の構成}
     ファイル構成:
@@ -280,10 +325,13 @@ atom = do symbol "("
 
 \begin{frame}[fragile]{Parser.hs}
     再帰的に表現
+
 \end{frame}
 
 \begin{frame}[fragile]{parseAExpr}
     四則演算のパーサと同じ雰囲気で実装
+
+    (実装自体はbuildExpressionParserに丸投げ)
 \end{frame}
 
 \begin{frame}[fragile]{parseCommand}
@@ -327,11 +375,28 @@ sequenceOfCommand =
 
 
 \begin{frame}[fragile]{(補足.)セミコロンについて②}
-    C言語のセミコロン
+    C言語のセミコロン:
+
+    式，文よりも細かいレベルでセミコロンの規則が定められている
+\end{frame}
+
+\begin{frame}[fragile]{(補足.)セミコロンについて③}
+    例(CのBNF):
+    \begin{verbatim}
+<statement> ::= <labeled-statement>
+              | <expression-statement>
+              | <compound-statement>
+              | <selection-statement>
+              | <iteration-statement>
+              | <jump-statement>
+
+<expression-statement> ::= {<expression>}? ;
+    \end{verbatim}
+    $\to$本実装では，大まかな機能の実装に集中したいため，(とりあえず)セミコロンは単に文のセパレータとして用いる
 \end{frame}
 
 \begin{frame}[fragile]{Env.hs}
-    変数をData.map で実装
+    変数(環境)をData.map (連想リスト)で実装
    \begin{verbatim}
    type Env = Map String Integer 
     \end{verbatim}
@@ -362,9 +427,14 @@ x := 1; while(x < 10) do {x := x + 1}
 
 \subsection{IMPの構文上の問題点}
 
-\begin{frame}{IMPの構文上の問題点}
+\begin{frame}[fragile]{IMPの構文上の問題点}
     IMPの型(IntegerとBoolean)は，構文上完全に切り離されている．
     (AExprとBExpr)
+    \begin{verbatim}
+    \end{verbatim}
+    $\to$ 関数の実装を考えると...
+
+    各型に対し別の構文で関数を実装することになる
 \end{frame}
 
 \subsection{}
@@ -419,9 +489,32 @@ evalStatement :: Env -> Statement -> Env
 
 evalExpr :: Env -> Expr -> TypeEnv
     \end{verbatim}
+
+    $\to$(if文のexpr等)構文レベルでの型制限ができないため，パターンマッチで絞る必要がある
+\end{frame}
+
+\begin{frame}[fragile]{型エラーについて}
+    例:if文の評価
+
+    \begin{verbatim}
+evalStatement env (If b x y) = 
+    case evalExpr env b of 
+        TypeBool True -> evalStatement env x
+        TypeBool False -> evalStatement env
+        _ -> error 
+          "If statement expected type 'Bool' as Expr" 
+    \end{verbatim}
+
 \end{frame}
 
 \begin{frame}[fragile]{デモ③}
+    \begin{verbatim}
+x := 1; y := true
+
+x := 1; y := 2; if(x > y) then{x := 10} else{y := 10}
+
+x := 1; while(x < 10) do {x := x + 1}
+    \end{verbatim}
 \end{frame}
 
 \subsection{}
@@ -436,14 +529,63 @@ evalExpr :: Env -> Expr -> TypeEnv
     関数の実装
 \end{frame}
 
-\begin{frame}[fragile]{Func の構文的な位置づけ}
+\begin{frame}[fragile]{Func の構文的な位置づけ①}
     Expr に組み込むことを検討
     \begin{verbatim}
 data Expr = ...
           | Func Expr  Statement
           | Apply Expr Expr
     \end{verbatim}
+    func (引数) 処理
 \end{frame}
+
+\begin{frame}[fragile]{Func の構文的な位置づけ②}
+    処理がStatementだが，値を返したい
+
+    $\to$Statement内に，Exprとの橋渡しとなるような構文が必要
+
+    \begin{verbatim}
+data Statement = ...
+               | Return Expr 
+    \end{verbatim}
+    (Statementの構文もExprに入れてもいい感じになる?)
+\end{frame}
+
+\begin{frame}[fragile]{関数型の実装}
+    TypeEnv内に関数型を実装したい
+    \begin{verbatim}
+data Env = Map String TypeEnv
+
+data TypeEnv = TypeInteger Integer
+             | TypeBool Bool
+             | Closure Env Expr Statement
+    \end{verbatim}
+    Env の入れ子みたいに実装？
+
+\end{frame}
+
+\begin{frame}[fragile]{想定動作例}
+    \begin{verbatim}
+hoge := func(arg1){x := arg1 * 2; };
+> fromList [("hoge",Closure[("arg1",Assign(Var(x),
+  Mul(Var(arg1),Integer(2))))])]
+x := hoge(2);
+> fromList [("hoge",Closure[("arg1",Assign(Var(x),
+  Mul(Var(arg1),Integer(2))))],"x",TypeInteger(4))]
+    \end{verbatim}
+\end{frame}
+
+\section{}
+\begin{frame}{文献}
+1. 
+
+2. 
+
+3.
+
+4.
+\end{frame}
+
 
 %
 \end{document}
