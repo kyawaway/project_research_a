@@ -78,7 +78,6 @@ sequenceOfStatement  =
        return $ if length list == 1 then head list else Seq list
 
 
-
 parseStatement  :: Parser Statement
 parseStatement  = parseSkipStatement
         <|> parseIfStatement
