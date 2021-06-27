@@ -42,12 +42,11 @@ parseExpr = buildExpressionParser
        ,[binary "+" Add AssocLeft, binary "-" Sub AssocLeft, prefix "-" Negative]
        ,[binary ">" Greater AssocLeft, binary "<" Less AssocLeft, binary "==" Equal AssocLeft]
        ]
-       exprTerm <* semi
+       exprTerm 
   where
     binary name fun assoc = Infix (reservedOp name >> return fun) assoc
     prefix name fun = Prefix (fun <$ reservedOp name)
 
--- セミコロンまわり微妙(後述)
 
 exprTerm :: Parser Expr
 exprTerm = parens parseExpr
@@ -75,7 +74,7 @@ statement = parens statement
 
 
 sequenceOfStatement  =
-    do list <- many1 parseStatement 
+    do list <- sepBy1 parseStatement semi 
        return $ if length list == 1 then head list else Seq list
 
 
@@ -88,36 +87,27 @@ parseStatement  = parseSkipStatement
 
 -- skip 
 parseSkipStatement  :: Parser Statement
-parseSkipStatement  = reserved "skip" <* semi  >> return Skip 
+parseSkipStatement  = reserved "skip" >> return Skip 
 
 -- if 
 
 parseIfStatement  :: Parser Statement
 parseIfStatement  =
     do reserved "if"
-       cond <- parens parseExpr 
+       cond <- parens parseExpr  
        reserved "then"
        stmt1 <- braces statement
        reserved "else"
-       If cond stmt1 <$> braces statement <* semi
+       If cond stmt1 <$> braces statement
 
--- cond <- parens parseExpr <* semi  にすると (expr); みたいな形になる　
--- (expr;) にしたいから，とりあえずparseExprのほうでsemi受理させて，その代わりAssignでsemiを受理しないみたいな格好になっている
-
--- do symbol "("
---          cond <- parseExpr <* semi
---          symbol ")"
---          return cond
---
--- みたいにやれば解決するけど...
 
 -- while 
 parseWhileStatement  :: Parser Statement
 parseWhileStatement  =
     do reserved "while"
-       cond <-  parens parseExpr 
+       cond <-  parens parseExpr
        reserved "do"
-       stmt <-  braces statement <* semi
+       stmt <-  braces statement
        return $ While cond stmt 
 
 
