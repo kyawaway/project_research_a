@@ -81,19 +81,19 @@
     \end{block}
 \end{frame}
 
-\begin{frame}[fragile]{状態量を用いたMonad概要図①}
+
+\begin{frame}{状態量を用いたMonad概要図①}
     \centering 
     \includegraphics[scale=0.3]{mid1.png}
-    \begin{verbatim}
-    \end{verbatim}
 
     $a \to T(b) , b \to T(c)$の関数合成はできない
 \end{frame}
 
 \begin{frame}{状態量を用いたMonad概要図②}
-    (図)
+    \centering 
+    \includegraphics[scale=0.3]{mid2.png}
 
-    bind,returnによって関数合成(っぽいこと)ができる
+    bind,returnによって関数合成っぽいことができる
 \end{frame}
 
 \begin{frame}[fragile]{Monadの例1:Maybe ①}
@@ -324,7 +324,7 @@ AExpr ::= integer
 \end{frame}
 
 \begin{frame}[fragile]{Parser.hs}
-    再帰的に表現
+    Parsecの関数を用いて，Lexer,Parser部を実装
 
 \end{frame}
 
@@ -368,7 +368,7 @@ sequenceOfCommand =
    Statement ; Statement ; ... ; Statement
    \end{verbatim}
    \begin{itemize}
-       \item 文末には付けない
+       \item 一番最後のには付けない
        \item Pascal等が同じ方式
    \end{itemize}
 \end{frame}
@@ -574,18 +574,6 @@ x := hoge(2);
   Mul(Var(arg1),Integer(2))))],"x",TypeInteger(4))]
     \end{verbatim}
 \end{frame}
-
-\section{}
-\begin{frame}{文献}
-1. 
-
-2. 
-
-3.
-
-4.
-\end{frame}
-
 
 %
 \end{document}
