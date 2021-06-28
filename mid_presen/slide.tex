@@ -260,7 +260,7 @@ atom = do symbol "("
 
 \begin{frame}[fragile]{IMPの構文(BNF)}
     \begin{verbatim}
-Command ::= seq Command Command 
+Command ::= Command; Command 
           | if BExpr then Command else Command
           | while BExpr do Command
           | String := AExpr
