@@ -85,7 +85,7 @@ defineVar envRef var val = do {
         else do {
             valRef <- newIORef val;
             env <- readIORef envRef;
-            writeIORef envRef (fromList [(var, valRef)]);
+            writeIORef envRef (insert var valRef env);
             return val;
         }
 }
