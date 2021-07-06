@@ -57,7 +57,7 @@ exprTerm = parens parseExpr
         <|> parseBool
         <|> Var <$> identifier
 
---- Bool
+---- Bool
 
 parseBool :: Parser Expr
 parseBool = try parseTrue <|> try parseFalse
@@ -68,13 +68,15 @@ parseTrue = string "true" >> return (Bool True)
 parseFalse :: Parser Expr
 parseFalse = string "false" >> return (Bool False)
 
--- function
+---- function
 
 parseFunc :: Parser Expr 
 parseFunc = do reserved "func"
                args <- parens parseExpr 
-               stmt <- braces statement
+               stmt <- braces parseStatement
                return $ Func args stmt 
+
+---- apply
 
 parseApply :: Parser Expr
 parseApply = do func <- parseExpr 
@@ -83,50 +85,51 @@ parseApply = do func <- parseExpr
 
 -- Parse Statement 
 
-statement :: Parser Statement
-statement = parens statement
+parseStatement :: Parser Statement
+parseStatement = parens parseStatement
    <|> sequenceOfStatement
 
 
 sequenceOfStatement  =
-    do list <- sepBy1 parseStatement semi 
+    do list <- sepBy1 statement semi 
        return $ if length list == 1 then head list else Seq list
 
 
-parseStatement  :: Parser Statement
-parseStatement  = parseSkipStatement
+statement  :: Parser Statement
+statement  = parseSkipStatement
         <|> parseIfStatement
         <|> parseWhileStatement
         <|> parseAssignStatement
         <|> parseReturnStatement
 
--- skip 
+---- skip 
 parseSkipStatement  :: Parser Statement
 parseSkipStatement  = reserved "skip" >> return Skip 
 
--- if 
+---- if 
 
 parseIfStatement  :: Parser Statement
 parseIfStatement  =
     do reserved "if"
        cond <- parens parseExpr  
        reserved "then"
-       stmt1 <- braces statement
+       stmt1 <- braces parseStatement
        reserved "else"
-       If cond stmt1 <$> braces statement
+       If cond stmt1 <$> braces parseStatement
 
 
--- while 
+---- while
+
 parseWhileStatement  :: Parser Statement
 parseWhileStatement  =
     do reserved "while"
        cond <-  parens parseExpr
        reserved "do"
-       stmt <-  braces statement
+       stmt <-  braces parseStatement
        return $ While cond stmt 
 
 
--- assign
+---- assign
 
 parseAssignStatement  :: Parser Statement
 parseAssignStatement  =
@@ -134,16 +137,15 @@ parseAssignStatement  =
        reservedOp ":="
        Assign var <$> parseExpr
 
+---- return 
 
 parseReturnStatement :: Parser Statement 
 parseReturnStatement = 
         do reserved "return"
            Return <$> parseExpr
 
-parsePrint :: Parser Statement 
-parsePrint = do reserved "print"
-                Print <$> parseExpr
 
+-- parse Program
 
 parseWhileProgram :: Parser Statement
-parseWhileProgram = whiteSpace >> statement
+parseWhileProgram = whiteSpace >> parseStatement

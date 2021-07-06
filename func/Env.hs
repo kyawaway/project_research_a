@@ -23,26 +23,10 @@ data TypeEnv = TypeInteger Integer
              | Null
              deriving (Show)
 
-
-
+-- helper
 
 nullEnv :: IO Env
 nullEnv = newIORef Data.Map.empty 
-
-
-{-
-getVal :: Env -> String -> IO TypeEnv  
-getVal env ident  = lookup ident env 
-
--- ()
-test :: Maybe TypeEnv -> TypeEnv  
-test (Just x) = x
-test Nothing = error "{} is Not yet defined "
-
-
-setVal :: Env -> String -> TypeEnv -> Env     
-setVal env ident val = insert ident val env
--}
 
 
 isBound :: Env -> String -> IO Bool
@@ -56,19 +40,6 @@ getVal envRef var = readIORef envRef >>=
                     return . lookup var >>=
                     maybe (return Null) readIORef
 
-{-
-test :: Maybe (IO TypeEnv) -> IO TypeEnv
-test (Just x) = x
-test Nothing = error "{} is Not yet defined"
-
-
-getVal :: Env -> String -> IO TypeEnv  
-getVal envRef ident = do 
-        env <- readIORef envRef
-        test (lookup ident env)
-
--}
---getVal env ident  = test (lookup ident env)
 
 setVal :: Env -> String -> TypeEnv -> IO TypeEnv
 setVal envRef var val = do { 

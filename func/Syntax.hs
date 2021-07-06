@@ -26,5 +26,5 @@ data Expr =  Var String
           |  Equal Expr Expr
           deriving (Eq,Show)
 
-
+-- data Op
 

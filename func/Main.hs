@@ -9,17 +9,6 @@ import Parser
 import Env
 import Eval
 
-{-
-
-main :: IO ()
-main = do putStrLn "Enter expression:"
-          s <- getLine
-          case parse parseWhileProgram "stdin" s of
-            Left err -> print err
-            Right x -> do print x
-                          evalStatement Nullenv x
--}
-
 
 main :: IO ()
 main = do
