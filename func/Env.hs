@@ -20,8 +20,16 @@ type Env = IORef (Map String (IORef TypeEnv))
 
 data TypeEnv = TypeInteger Integer 
              | TypeBool Bool
+             | Closure Env String Statement
              | Null
-             deriving (Show)
+
+instance Show TypeEnv where
+        show (TypeInteger x) = show x
+        show (TypeBool True) = show "true"
+        show (TypeBool False) = show "false"
+        show Closure {} = show "Closure"
+        show Null = show "Null"
+        
 
 -- helper
 

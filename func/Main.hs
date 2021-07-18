@@ -22,7 +22,7 @@ main = do
                       Left err -> print err >> loop env
                       Right x -> do print x
                                     a <- evalStatement env x
-                                    print a
+                                    maybe (return ()) print a
                                     loop env
 
 

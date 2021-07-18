@@ -13,7 +13,7 @@ data Statement = Seq [Statement]
 data Expr =  Var String   
           |  Integer Integer 
           |  Bool Bool
-          |  Func Expr Statement 
+          |  Func String Statement 
           |  Apply Expr Expr
           |  Negative Expr
           |  Pow Expr Expr

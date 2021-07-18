@@ -4,6 +4,7 @@ import Control.Exception
 import Control.Monad
 import Data.IORef
 import Data.Typeable
+
 import Data.Map.Strict
 import Prelude hiding(lookup)
 
@@ -13,13 +14,15 @@ import Env
 
 -- evaluate ast
 
-evalStatement :: Env -> Statement -> IO TypeEnv  
+evalStatement :: Env -> Statement -> IO (Maybe TypeEnv)  
 
-evalStatement env (Seq []) = return Null   
+evalStatement env (Seq []) = return Nothing   
 
-evalStatement env (Seq (h:t)) = do evalStatement env h
-                                   evalStatement env (Seq t)
+evalStatement env (Seq (h:t)) = do car <- evalStatement env h
+                                   maybe (evalStatement env (Seq t)) (return . Just) car
  
+--evalStatement env (Seq (h:t)) = do a <- evalStatement env h
+    --                               evalStatement env (Seq t)
 
 
 evalStatement env (If b x y) = do
@@ -33,17 +36,17 @@ evalStatement env (While e s) = do
     cond <- evalExpr env e
     case cond of 
         TypeBool True ->  evalStatement env (Seq[s,While e s]) 
-        _ -> return Null 
+        _ -> return Nothing
 
 
 evalStatement env (Assign x n) = do 
     val <- evalExpr env n 
-    defineVar env x val >> return Null
+    defineVar env x val >> return Nothing
 
 
-evalStatement env Skip = return Null  
+evalStatement env Skip = return Nothing  
 
-evalStatement env (Return x) = evalExpr env x
+evalStatement env (Return x) = Just <$> evalExpr env x
 
 --- OpをSyntax上でまとめたら評価関数もまとめやすくなりそう
 
@@ -66,7 +69,24 @@ evalExpr env (Integer x) = return (TypeInteger x)
 
 evalExpr env (Var  x) = getVal env x
 
----- BoolOp
+---- Func 
+
+evalExpr env (Func arg body) = do closureEnv <- nullEnv
+                                  return (Closure closureEnv arg body)
+
+---- Apply
+
+evalExpr env (Apply funcname param) = do 
+        func <- evalExpr env funcname
+        case func of 
+                  Closure closureEnv arg body -> do
+                      value <- evalExpr env param 
+                      newenv <- defineVar closureEnv arg value
+                      result <- evalStatement closureEnv body 
+                      maybe (return Null) return result
+                  _ -> error "Error in func"
+
+------ BoolOp
 
 evalExpr env (Greater x y) = do val1 <- evalExpr env x 
                                 val2 <- evalExpr env y

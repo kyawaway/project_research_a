@@ -20,7 +20,7 @@ reserveWord =
         ,"false"
         ,"return"
         ,"func"
-        ,"print"
+        ,"apply"
     ]
     ,Token.reservedOpNames = ["+", "-", "*", "/", ":=", "<", ">","=="]
     }
@@ -40,7 +40,8 @@ semi = Token.semi lexer
 
 parseExpr:: Parser Expr
 parseExpr = buildExpressionParser
-       [[binary "^" Pow AssocRight]
+       [[postfix (parens parseExpr) Apply]
+       ,[binary "^" Pow AssocRight]
        ,[binary "*" Mul AssocLeft, binary "/" Div AssocLeft]
        ,[binary "+" Add AssocLeft, binary "-" Sub AssocLeft, prefix "-" Negative]
        ,[binary ">" Greater AssocLeft, binary "<" Less AssocLeft, binary "==" Equal AssocLeft]
@@ -49,13 +50,17 @@ parseExpr = buildExpressionParser
   where
     binary name fun assoc = Infix (reservedOp name >> return fun) assoc
     prefix name fun = Prefix (fun <$ reservedOp name)
+    postfix args fun = Postfix (flip fun <$> args)
+
 
 
 exprTerm :: Parser Expr
 exprTerm = parens parseExpr
+        <|> parseFunc
         <|> Integer <$> integer
         <|> parseBool
         <|> Var <$> identifier
+
 
 ---- Bool
 
@@ -72,7 +77,7 @@ parseFalse = string "false" >> return (Bool False)
 
 parseFunc :: Parser Expr 
 parseFunc = do reserved "func"
-               args <- parens parseExpr 
+               args <- parens  identifier
                stmt <- braces parseStatement
                return $ Func args stmt 
 
