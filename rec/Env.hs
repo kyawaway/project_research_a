@@ -50,12 +50,6 @@ isBound envRef var = do
                                  Just a -> return True
                                  Nothing -> isBound cdr var
 
-{-
-isBound envRef var = readIORef envRef >>=
-                     return . lookup var >>=
-                     return . maybe False (const True)
--}
-
 
 
 getVal :: Env -> String -> IO TypeEnv
@@ -65,13 +59,6 @@ getVal envRef var = do
             Gloval e -> maybe (return Null) readIORef (lookup var e)
             Local car cdr -> maybe (getVal cdr var) readIORef (lookup var car)
 
-{-
-getVal envRef var = readIORef envRef >>=
-                    return . lookup var >>=
-                    maybe (return Null) readIORef
--}
-
-
 
 setVal :: Env -> String -> TypeEnv -> IO ()
 setVal envRef var val = do
@@ -79,16 +66,6 @@ setVal envRef var val = do
         case envStack of
             Gloval e -> maybe (return ()) (flip writeIORef val) (lookup var e)
             Local car cdr -> maybe (setVal cdr var val) (flip writeIORef val) (lookup var car)
-
-
-{-
-setVal envRef var val = do { 
-    env <- readIORef envRef;
-    maybe (return ()) (flip writeIORef val) (lookup var env);
-    return val;
-    }
--}
-
 
 
 defineVar :: Env -> String -> TypeEnv -> IO ()
@@ -106,31 +83,17 @@ defineVar envRef var val = do
 
 
 
-{-
-defineVar envRef var val = do {
-    alreadyDefined <- isBound envRef var;
-    if alreadyDefined
-        then setVal envRef var val
-        else do {
-            valRef <- newIORef val;
-            env <- readIORef envRef;
-            writeIORef envRef (insert var valRef env);
-            return val;
-        }
-}
--}
-
 push :: Env -> String -> TypeEnv -> IO Env 
 push env var val = do
         valRef <- newIORef val
         newIORef (Local (Data.Map.fromList [(var, valRef)]) env)
-{-
-pop :: Env -> Env 
+
+pop :: Env -> IO Env 
 pop env = do
         garbage <- readIORef env
         case garbage of
-            Local car cdr -> cdr
-            Gloval e -> error "error"
--}
+            Local car cdr -> return cdr
+            Gloval e -> error "stack error"
+
 
 

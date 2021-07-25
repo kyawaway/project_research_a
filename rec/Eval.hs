@@ -81,7 +81,8 @@ evalExpr env (Apply funcname param) = do
                   Closure closureEnv arg body -> do
                       value <- evalExpr env param 
                       newenv <- push closureEnv arg value
-                      result <- evalStatement newenv body 
+                      result <- evalStatement newenv body
+                      garbage <- pop newenv
                       maybe (return Null) return result
                   _ -> error "Error in func"
 
