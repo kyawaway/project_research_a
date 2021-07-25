@@ -73,16 +73,12 @@ getVal envRef var = readIORef envRef >>=
 
 
 
-setVal :: Env -> String -> TypeEnv -> IO TypeEnv
+setVal :: Env -> String -> TypeEnv -> IO ()
 setVal envRef var val = do
         envStack <- readIORef envRef
         case envStack of
-            Gloval e -> do
-                hoge <- maybe (return ()) (flip writeIORef val) (lookup var e)
-                return val
-            Local car cdr -> do
-                huga <- maybe (return ()) (flip writeIORef val) (lookup var car)
-                return val
+            Gloval e -> maybe (return ()) (flip writeIORef val) (lookup var e)
+            Local car cdr -> maybe (setVal cdr var val) (flip writeIORef val) (lookup var car)
 
 
 {-
@@ -95,7 +91,7 @@ setVal envRef var val = do {
 
 
 
-defineVar :: Env -> String -> TypeEnv -> IO TypeEnv
+defineVar :: Env -> String -> TypeEnv -> IO ()
 defineVar envRef var val = do
         alreadyDefined <- isBound envRef var
         if alreadyDefined
@@ -104,12 +100,9 @@ defineVar envRef var val = do
                 valRef <- newIORef val
                 envStack <- readIORef envRef
                 case envStack of
-                    Gloval e -> do
-                        hoge <- writeIORef envRef (Gloval (insert var valRef e))
-                        return val
-                    Local car cdr -> do
-                        huga <- writeIORef envRef (Local (insert var valRef car) cdr)
-                        return val
+                    Gloval e -> writeIORef envRef (Gloval (insert var valRef e))
+                        
+                    Local car cdr -> writeIORef envRef (Local (insert var valRef car) cdr)
 
 
 
