@@ -14,10 +14,8 @@ import Parser
 
 -- data 
 
-type Env = IORef EnvStack
+type Env = IORef [Map String (IORef TypeEnv)]
 
-data EnvStack = Gloval (Map String (IORef TypeEnv))
-              | Local (Map String (IORef TypeEnv)) Env
 
 
 data TypeEnv = TypeInteger Integer
@@ -36,19 +34,19 @@ instance Show TypeEnv where
 -- helper
 
 nullEnv :: IO Env
-nullEnv = newIORef (Gloval Data.Map.empty)
+nullEnv = newIORef [Data.Map.empty]
 
 
 isBound :: Env -> String -> IO Bool
 isBound envRef var = do
         envStack <- readIORef envRef
         case envStack of
-            Gloval e -> case lookup var e of
-                            Just a -> return True
-                            Nothing -> return False
-            Local car cdr -> case lookup var car of
+            (h:t) -> case lookup var h of
                                  Just a -> return True
-                                 Nothing -> isBound cdr var
+                                 Nothing -> do
+                                     cdr <- newIORef t
+                                     isBound cdr var
+            [] -> return False
 
 
 
@@ -56,16 +54,20 @@ getVal :: Env -> String -> IO TypeEnv
 getVal envRef var = do
         envStack <- readIORef envRef
         case envStack of
-            Gloval e -> maybe (return Null) readIORef (lookup var e)
-            Local car cdr -> maybe (getVal cdr var) readIORef (lookup var car)
+            (h:t) -> do
+                cdr <- newIORef t
+                maybe (getVal cdr var) readIORef (lookup var h)
+            [] -> return Null
 
 
 setVal :: Env -> String -> TypeEnv -> IO ()
 setVal envRef var val = do
         envStack <- readIORef envRef
         case envStack of
-            Gloval e -> maybe (return ()) (flip writeIORef val) (lookup var e)
-            Local car cdr -> maybe (setVal cdr var val) (flip writeIORef val) (lookup var car)
+            (h:t) -> do
+                cdr <- newIORef t
+                maybe (setVal cdr var val) (flip writeIORef val) (lookup var h)
+            [] -> return ()
 
 
 defineVar :: Env -> String -> TypeEnv -> IO ()
@@ -77,23 +79,23 @@ defineVar envRef var val = do
                 valRef <- newIORef val
                 envStack <- readIORef envRef
                 case envStack of
-                    Gloval e -> writeIORef envRef (Gloval (insert var valRef e))
-                        
-                    Local car cdr -> writeIORef envRef (Local (insert var valRef car) cdr)
+                    (h:t) -> writeIORef envRef ((insert var valRef h):t)
+                    [] -> error "stack error"
 
 
 
 push :: Env -> String -> TypeEnv -> IO Env 
 push env var val = do
         valRef <- newIORef val
-        newIORef (Local (Data.Map.fromList [(var, valRef)]) env)
+        cons <- readIORef env
+        newIORef ((Data.Map.fromList [(var, valRef)]):cons)
 
 pop :: Env -> IO Env 
 pop env = do
         garbage <- readIORef env
         case garbage of
-            Local car cdr -> return cdr
-            Gloval e -> error "stack error"
+            (h:t) -> do newIORef t
+            [] -> error "stack error"
 
 
 
