@@ -52,7 +52,7 @@ parseExpr = buildExpressionParser
     prefix name fun = Prefix (fun <$ reservedOp name)
     postfix args fun = Postfix (flip fun <$> args)
 
-
+-- Applyの演算子を(Expr)にしてるの微妙な気がする
 
 exprTerm :: Parser Expr
 exprTerm = parens parseExpr
@@ -82,7 +82,7 @@ parseFunc = do reserved "func"
                return $ Func args stmt 
 
 ---- apply
-
+---- 未使用(失敗判定が...)
 parseApply :: Parser Expr
 parseApply = do func <- parseExpr 
                 param <- parens parseExpr 

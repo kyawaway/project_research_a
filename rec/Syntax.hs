@@ -8,6 +8,7 @@ data Statement = Seq [Statement]
           | Skip
           deriving (Eq,Show)
 
+-- 冗長?
 
 data Expr =  Var String   
           |  Integer Integer 
@@ -24,6 +25,4 @@ data Expr =  Var String
           |  Less Expr Expr
           |  Equal Expr Expr
           deriving (Eq,Show)
-
--- data Op
 

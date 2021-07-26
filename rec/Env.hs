@@ -36,6 +36,25 @@ instance Show TypeEnv where
 nullEnv :: IO Env
 nullEnv = newIORef [Data.Map.empty]
 
+--- stack
+
+push :: Env -> String -> TypeEnv -> IO Env 
+push env var val = do
+        valRef <- newIORef val
+        cons <- readIORef env
+        newIORef (Data.Map.fromList [(var, valRef)]:cons)
+
+
+pop :: Env -> IO Env 
+pop env = do
+        garbage <- readIORef env
+        case garbage of
+            (h:t) -> do newIORef t
+            [] -> error "stack error"
+
+--- var
+
+--- 基本方針は，スタックを頭から捜査
 
 isBound :: Env -> String -> IO Bool
 isBound envRef var = do
@@ -79,23 +98,7 @@ defineVar envRef var val = do
                 valRef <- newIORef val
                 envStack <- readIORef envRef
                 case envStack of
-                    (h:t) -> writeIORef envRef ((insert var valRef h):t)
+                    (h:t) -> writeIORef envRef (insert var valRef h:t)
                     [] -> error "stack error"
-
-
-
-push :: Env -> String -> TypeEnv -> IO Env 
-push env var val = do
-        valRef <- newIORef val
-        cons <- readIORef env
-        newIORef ((Data.Map.fromList [(var, valRef)]):cons)
-
-pop :: Env -> IO Env 
-pop env = do
-        garbage <- readIORef env
-        case garbage of
-            (h:t) -> do newIORef t
-            [] -> error "stack error"
-
 
 

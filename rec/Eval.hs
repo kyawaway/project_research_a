@@ -14,6 +14,8 @@ import Env
 
 -- evaluate ast
 
+-- Statement
+
 evalStatement :: Env -> Statement -> IO (Maybe TypeEnv)  
 
 evalStatement env (Seq []) = return Nothing   
@@ -21,9 +23,6 @@ evalStatement env (Seq []) = return Nothing
 evalStatement env (Seq (h:t)) = do car <- evalStatement env h
                                    maybe (evalStatement env (Seq t)) (return . Just) car
  
---evalStatement env (Seq (h:t)) = do a <- evalStatement env h
-    --                               evalStatement env (Seq t)
-
 
 evalStatement env (If b x y) = do
     cond <- evalExpr env b
@@ -48,7 +47,6 @@ evalStatement env Skip = return Nothing
 
 evalStatement env (Return x) = Just <$> evalExpr env x
 
---- OpをSyntax上でまとめたら評価関数もまとめやすくなりそう
 
 -- Expr 
 
@@ -90,66 +88,76 @@ evalExpr env (Apply funcname param) = do
 
 evalExpr env (Greater x y) = do val1 <- evalExpr env x 
                                 val2 <- evalExpr env y
-                                return (evalOp2 val1 val2 "Greater") 
+                                return (evalOp2Bool val1 val2 (>)) 
 
 evalExpr env (Less x y) = do val1 <- evalExpr env x 
                              val2 <- evalExpr env y
-                             return (evalOp2 val1 val2 "Less") 
+                             return (evalOp2Bool val1 val2 (<)) 
 
 evalExpr env (Equal x y) = do val1 <- evalExpr env x 
                               val2 <- evalExpr env y
-                              return (evalOp2 val1 val2 "Equal") 
+                              return (evalOp2Bool val1 val2 (==)) 
 
 ---- IntegerOp
 
 evalExpr env (Add x y) = do val1 <- evalExpr env x 
                             val2 <- evalExpr env y
-                            return (evalOp2 val1 val2 "Add") 
+                            return (evalOp2Integer val1 val2 (+)) 
 
 evalExpr env (Sub x y) = do val1 <- evalExpr env x 
                             val2 <- evalExpr env y
-                            return (evalOp2 val1 val2 "Sub") 
+                            return (evalOp2Integer val1 val2 (-)) 
 
 evalExpr env (Mul x y) = do val1 <- evalExpr env x 
                             val2 <- evalExpr env y
-                            return (evalOp2 val1 val2 "Mul") 
+                            return (evalOp2Integer val1 val2 (*)) 
 
 
 evalExpr env (Div x y) = do val1 <- evalExpr env x 
                             val2 <- evalExpr env y
-                            return (evalOp2 val1 val2 "Div") 
+                            return (evalOp2Integer val1 val2 div) 
 
 evalExpr env (Pow x y) = do val1 <- evalExpr env x 
                             val2 <- evalExpr env y
-                            return (evalOp2 val1 val2 "Pow") 
+                            return (evalOp2Integer val1 val2 (^)) 
  
 evalExpr env (Negative x) = do val <- evalExpr env x
-                               return (evalOp1 val "Negative")
+                               return (evalOp1 val negate)
 
 -- binary Op
 
-evalOp2 :: TypeEnv -> TypeEnv -> String -> TypeEnv
-
 ---- BoolOp
 
-evalOp2 (TypeInteger x) (TypeInteger y) "Greater" = TypeBool (x > y)
-evalOp2 (TypeInteger x) (TypeInteger y) "Less" = TypeBool (x < y)
-evalOp2 (TypeInteger x) (TypeInteger y) "Equal" = TypeBool (x == y)
+evalOp2Bool :: TypeEnv -> TypeEnv -> (Integer -> Integer -> Bool) -> TypeEnv
+evalOp2Bool (TypeInteger x) (TypeInteger y) func = TypeBool (func x y)
+evalOp2Bool _ _ _ = error "TypeError"
 
 
 ---- IntegerOp
 
-evalOp2 (TypeInteger x) (TypeInteger y) "Add" = TypeInteger (x + y)
-evalOp2 (TypeInteger x) (TypeInteger y) "Sub" = TypeInteger (x - y)
-evalOp2 (TypeInteger x) (TypeInteger y) "Mul" = TypeInteger (x * y)
-evalOp2 (TypeInteger x) (TypeInteger y) "Div" = TypeInteger (div x  y)
-evalOp2 (TypeInteger x) (TypeInteger y) "Pow" = TypeInteger (x ^ y)
+evalOp2Integer :: TypeEnv -> TypeEnv -> (Integer -> Integer -> Integer) -> TypeEnv
+evalOp2Integer (TypeInteger x) (TypeInteger y) func = TypeInteger (func x y)
+evalOp2Integer _ _ _ = error "TypeError"
 
-evalOp2 _ _ _ = error "TypeError"
+
+---- ほんとはもっと汎用がいい
+---- 型に対するパータンマッチの書き方がよくわかってない
+
+{-
+evalOp2 :: TypeEnv -> TypeEnv -> (Integer -> Integer -> *) -> TypeEnv
+evalOp2 (TypeInteger x) (TypeInteger y) func = case func x y of
+                                                   Integer a -> TypeInteger a
+                                                   Bool a -> TypeBool a
+                                                   _ -> error "Error"
+
+evalOp2 _ _ _ = error "Error"
+-}
 
 
 -- unary Op
 
-evalOp1 :: TypeEnv -> String -> TypeEnv
-evalOp1 (TypeInteger x) "Negative" = TypeInteger (-x)
+evalOp1 :: TypeEnv -> (Integer -> Integer) -> TypeEnv
+evalOp1 (TypeInteger x) func = TypeInteger (func x)
 evalOp1 _ _ = error "TypeError"
+
+
