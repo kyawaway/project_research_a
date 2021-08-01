@@ -1,0 +1,644 @@
+\documentclass[uplatex,dvipdfmx,ja=standard]{beamer}
+\usepackage{amsmath,amssymb}
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage{ascmac}
+\usepackage{listings,jvlisting} 
+\usepackage{url}
+\usetheme{Darmstadt}
+%
+%
+%%% Begin:
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\lstset{
+  basicstyle={\ttfamily\small},
+  keywordstyle={\color{blue}},
+  commentstyle={\color{green}},
+  stringstyle=\color{red},
+  tabsize=1,
+  breaklines=true, %折り返し
+}
+\begin{document}
+%
+%
+\title[Presentation]{Parsec による簡易インタプリタの実装と構文設計(最終発表)} 
+\institute[Waseda Univ.]{\normalsize 機械科学・航空宇宙学科 3年 1w192224 田久健人}
+\date{\today}
+
+\begin{frame}
+\titlepage 
+\end{frame}
+
+\begin{frame}[fragile]{はじめに}
+ \begin{verbatim}
+ 中間発表の続きです...
+
+ 今回は，パーサではなく評価寄りの話です
+ 
+ \end{verbatim}
+
+ 進捗→
+ \url{https://github.com/tkyawa/project_research_a}
+
+\end{frame}
+
+\begin{frame}{abstract}
+Haskell のパーサコンビネータのParsec を用いた簡易なインタプリタの実装を通して，パーサコンビネータの雰囲気を学び，実際に構文の設計を行う．
+\end{frame}
+
+\begin{frame}{目次}
+    \tableofcontents
+\end{frame}
+
+\setcounter{section}{3}
+
+\section{関数実装に向けた下準備}
+\subsection{おさらい}
+
+\begin{frame}[fragile]{これから拡張していく文法}
+AST$\to$ 
+
+    \begin{verbatim}
+data Statement = Seq [Statement]
+          | If Expr Statement Statement
+          | While Expr Statement  
+          | Assign String Expr
+          | Skip
+
+data Expr =  Var String   
+          |  Integer Integer 
+          |  Bool Bool
+          |  (Op) Expr Expr
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{これから拡張していく文法}
+(実際の構文$\to$)
+ 
+\begin{verbatim}
+
+Statement ::= Statement; Statement; ..,; Statement
+            | if(Expr)then{Statement}else{Statement}
+            | while(Expr)do{Statement}
+            | String := Expr
+            | skip
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{関数実装に必要なもの}
+    関数の構文$\to$
+    \begin{verbatim}
+AST:
+    data Expr = ...
+              | Func String Statement
+
+(実際の構文:)
+    Func :== func(arg){body}
+    \end{verbatim}
+関数は式だが中身が文$\to$値(式)を返す文が必要
+\end{frame}
+
+\begin{frame}[fragile]{Return文の実装}
+    文を，(形式上は)値を返すようにする (evalStatementの型を統一)
+
+    $\to$Null型の実装を考える
+    \begin{verbatim}
+    data TypeEnv = ... 
+                 | Null
+    \end{verbatim}
+    return以外の文は，Nullを返すようにする
+
+\end{frame}
+
+\subsection{Return文の実装}
+
+\begin{frame}[fragile]{Returnによるjump機能の実装①}
+一般的なReturn文・・・jumpの機能がある
+
+例:C言語の場合
+    \begin{verbatim}
+hoge()
+{
+    int temp = 1;
+    return temp;
+    temp = 2;
+}
+    \end{verbatim}
+hoge()を呼ぶと，1が返ってくる$\to$returnで文の評価が終了している
+\end{frame}
+
+\begin{frame}[fragile]{(補足)Returnによるjump以外での同等の表現}
+    \begin{verbatim}
+Rust:
+
+    bodyの最後に式を書き，それが関数の返り値となる
+    returnで処理を中断して値返すことも可能(jump)
+
+OCaml(関数型言語一般):
+
+    そもそも全部Expr
+
+    \end{verbatim}
+必ずしもreturnによるjump機能は必須ではない
+
+今回は，命令型としてのシンプルさを求めているためreturnによるjumpを導入
+\end{frame}
+
+\begin{frame}[fragile]{Returnによるjump機能の実装②}
+値を返すのはreturnだけ$\to$
+
+Nullの場合と値が得られた場合でパターンマッチ
+\begin{verbatim}
+
+\end{verbatim}
+
+$\to$Maybeモナドの恩恵が受けられそう！
+
+\end{frame}
+
+\begin{frame}[fragile]{Returnによるjump機能の実装③}
+    \begin{verbatim}
+evalStatement env (Seq []) = return Nothing   
+
+evalStatement env (Seq (h:t)) 
+ = do 
+  car <- evalStatement env h
+  maybe(evalStatement env (Seq t))(return . Just)car
+    \end{verbatim}
+    Nothingで評価続行，Justで評価停止($\to$なんか逆...)
+\end{frame}
+
+
+\begin{frame}[fragile]{デモ}
+    \begin{verbatim}
+>> x := 1; return x; x := 10
+1
+>> return x
+1
+    \end{verbatim}
+
+\end{frame}
+
+\begin{frame}{まとめ}
+return文の実装により，関数の返り値の指定が可能になった
+\end{frame}
+
+
+\section{関数の実装}
+
+\begin{frame}[fragile]{AST}
+    構文的には，関数の宣言，関数適用が必要
+
+    \begin{verbatim}
+data Expr = ...
+          | Func String Statement
+          | Apply Expr Expr     
+    \end{verbatim}
+今回は，どちらもExprに組み込む
+\end{frame}
+
+
+\begin{frame}[fragile]{実際の構文}
+    \begin{verbatim}
+Func:
+    func_name :== func(arg){body}
+
+Apply:
+    var :== func_name(param) 
+\end{verbatim}
+
+\end{frame}
+
+\begin{frame}[fragile]{Parser}
+FuncのParser・・・愚直に実装できる
+
+ApplyのParser・・・愚直に実装すると...
+    \begin{verbatim}
+
+    \end{verbatim}
+演算子として見る，優先度高め$\to$builldExpressionParserに組み込む
+\end{frame}
+
+\begin{frame}[fragile]{parseApply}
+専用の演算子，予約語を使わすに実装したい
+    \begin{verbatim}
+parseExpr = buildExpressionParser
+       [[postfix (parens parseExpr) Apply]
+       ,[binary "^" Pow AssocRight]
+       .
+       .
+       ]
+       exprTerm 
+  where
+    .
+    .
+    postfix args fun = Postfix (flip fun <$> args)
+    \end{verbatim}
+
+$\to$ (引数)を後置演算子として使用する(微妙？)
+
+\end{frame}
+
+\begin{frame}[fragile]{Funcの評価}
+    関数型のようなものを用意し，関数型を返す
+    \begin{verbatim}
+evalExpr env (Func arg body) 
+    = return (関数型の値)
+    \end{verbatim}
+\end{frame}
+
+\subsection{関数型の検討案①}
+
+\begin{frame}[fragile]{関数型の実装案①}
+    \begin{verbatim}
+案1:
+
+data TypeEnv = ... 
+             | Closure Env String Statement
+    \end{verbatim}
+Closure内のEnvの入れ子でスコープを表現する
+\end{frame}
+
+\begin{frame}[fragile]{案①によるApplyの評価①}
+バラして，入れて，中身を評価
+    \begin{verbatim}
+手順:
+
+(1) func_name を評価 → 関数ならClosureが返ってくる
+
+(2) もしClosure closureEnv arg body が返ってきたら...
+
+    (i)ClosureEnv に(arg param)をdefineVar
+
+    (ii)evalStatement closureEnv body
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{案①によるApplyの評価②}
+
+    \begin{verbatim}
+evalExpr env (Apply funcname param) = do
+    func <- evalExpr env funcname
+    case func of 
+        Closure closureEnv arg body -> do
+            value <- evalExpr env param  
+(i)         newenv <- defineVar closureEnv arg value
+(ii)        result <- evalStatement closureEnv body 
+            maybe (return Null) return result        
+            _ -> error "Error in func"
+    \end{verbatim}
+\end{frame}
+
+
+\begin{frame}{関数定義，関数適用の際の環境の動き①}
+    \centering 
+    \includegraphics[scale=0.31]{func1.png}
+\end{frame}
+
+\begin{frame}{関数定義，関数適用の際の環境の動き②}
+    \centering 
+    \includegraphics[scale=0.31]{func2.png}
+\end{frame}
+
+\begin{frame}{関数定義，関数適用の際の環境の動き③}
+    \centering 
+    \includegraphics[scale=0.31]{func3.png}
+\end{frame}
+
+
+\begin{frame}{関数定義，関数適用の際の環境の動き③}
+    \centering 
+    \includegraphics[scale=0.31]{func4.png}
+\end{frame}
+
+\begin{frame}{案①の問題点}
+    \begin{itemize}
+        \item 関数内から外側のスコープには一切アクセスできない
+        \item スコープが関数宣言時に確定している
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{まとめ}
+環境を入れ子構造にすることにより関数実行時のスコープを表現したが，閉じた関数しか表現できないという問題点がある
+\end{frame}
+
+\section{再帰呼び出し実装の検討}
+
+\begin{frame}[fragile]{再帰呼び出しの構文}
+    (すごい雑に表すと)
+    \begin{verbatim}
+hoge := func(x){x := x + 1; return hoge(x)}
+    \end{verbatim}
+
+\end{frame}
+
+\subsection{再帰呼び出し実装における問題点}
+
+\begin{frame}{現状の問題点}
+    \begin{itemize}
+        \item 環境問題(案①だとガチガチすぎ)
+    \end{itemize}
+スコープを取る動作を，関数宣言時ではなく関数適用時にする必要がある
+\end{frame}
+
+\begin{frame}{(補足)未定義関数のApplyについて}
+評価の順番を考えると納得
+
+func宣言時，bodyは評価していない
+\end{frame}
+
+\begin{frame}[fragile]{環境問題解決の方針}
+    スコープを，ただの連想リストの入れ子で表現していた
+    \begin{verbatim}
+    \end{verbatim}
+    $\to$スタックっぽくする
+\end{frame}
+
+\begin{frame}[fragile]{環境問題の解決}
+    内側に新しい空の環境を取っていた
+
+    $\to$もとの環境を参照する形にする．
+    \begin{verbatim}
+evalExpr env (Func arg body) = 
+    return (Closure env arg body)
+    \end{verbatim}
+
+    これにより，関数が開けたi
+
+\end{frame}
+
+\subsection{案②:スタックベースの環境}
+
+\begin{frame}[fragile]{案②:環境をスタック化する}
+    新たなEnvの定義:
+    \begin{verbatim}
+type Env = IORef [Map String (IORef TypeEnv)]
+    \end{verbatim}
+Envを，MapのListで定義
+
+Listをスタックとして扱う
+\end{frame}
+
+\begin{frame}[fragile]{スタックにまつわるヘルパー関数:push}
+    \begin{verbatim}
+push :: Env -> String -> TypeEnv -> IO Env 
+push env var val = do
+    valRef <- newIORef val
+    cons <- readIORef env
+    newIORef (Data.Map.fromList [(var, valRef)]:cons)
+    \end{verbatim}
+pushは，Listの先頭に新たな要素を追加
+\end{frame}
+
+
+\begin{frame}[fragile]{スタックにまつわるヘルパー関数:pop}
+    \begin{verbatim}
+pop :: Env -> IO Env 
+pop env = do
+        garbage <- readIORef env
+        case garbage of
+            (h:t) -> do newIORef t
+            [] -> error "stack error"
+    \end{verbatim}
+popは，Listのcarを破棄
+\end{frame}
+
+\begin{frame}[fragile]{その他のヘルパー関数の変更}
+スタック(List)の頭から順に捜査していく
+
+    \begin{verbatim}
+例:getValの場合
+
+getVal :: Env -> String -> IO TypeEnv
+getVal envRef var = do
+  envStack <- readIORef envRef
+  case envStack of
+    (h:t) -> do
+      cdr <- newIORef t
+      maybe (getVal cdr var) readIORef (lookup var h)
+    [] -> return Null
+    \end{verbatim}
+データ捜査はListとしての性質を用いる
+\end{frame}
+
+\begin{frame}[fragile]{スタックを使用した関数適用の挙動}
+    \begin{verbatim}
+手順:
+
+(1) func_name を評価 $\to$ 関数ならClosureが返ってくる 
+
+(2) もしClosure closureEnv arg body が返ってきたら...
+
+    (i)   ClosureEnv に，(arg param)をdefineVarした
+          新たな実行コンテキストをpush 
+
+    (ii)  evalStatement newEnv body
+
+    (iii) 使う終わった実行コンテキストはpop
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{案②によるApplyの評価}
+    \begin{verbatim}
+evalExpr env (Apply funcname param) = do
+    func <- evalExpr env funcname
+    case func of
+        Closure closureEnv arg body -> do
+            value <- evalExpr env param
+(i)         newenv <- push closureEnv arg value
+(ii)        result <- evalStatement newenv body
+(iii)       garbage <- pop newenv
+            maybe (return Null) return result
+            _ -> error "Error in func"
+    \end{verbatim}
+スコープの挙動はスタックベース
+\end{frame}
+
+\begin{frame}[fragile]{デモ}
+    \begin{verbatim}
+(>> a := 100)
+
+>> hoge := func(x){a := 5; return a}
+
+>> return hoge(1)
+
+>> return a
+    \end{verbatim}
+aが定義される場所によるスコープの挙動の差
+\end{frame}
+
+\subsection{スタックベースのスコープの挙動}
+
+\begin{frame}[fragile]{両ケースに共通する動作}
+    \begin{verbatim}
+(i)   引数の(識別子，値)を，実行コンテキストをとってpush
+
+(iii) 使い終わった実行コンテキストをpop
+    \end{verbatim}
+$\to$ (ii)のevalStatementだけが異なる，特にdefineVal
+    \begin{verbatim}
+    \end{verbatim}
+
+\url{https://github.com/tkyawa/project_research_a/blob/master/rec/Env.hs}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local1.png}
+\end{frame}
+
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local2.png}
+\end{frame}
+
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local3.png}
+\end{frame}
+
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local4.png}
+\end{frame}
+
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local5.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local6.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local7.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local8.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local9.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local10.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動①local変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{local11.png}
+\end{frame}
+
+
+\begin{frame}[fragile]{スコープの挙動②global変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{glo2.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動②global変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{glo3.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動②global変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{glo4.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動②global変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{glo5.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動②global変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{glo6.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動②global変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{glo7.png}
+\end{frame}
+
+\begin{frame}[fragile]{スコープの挙動②global変数の場合}
+    \centering 
+    \includegraphics[scale=0.31]{glo8.png}
+\end{frame}
+
+\begin{frame}{まとめ}
+環境をスタックで実装したことにより，スコープの表現と柔軟性が両立し，再帰呼び出しが行えるようになった
+\end{frame}
+
+\section{おまけ}
+
+\begin{frame}{更なる拡張を考える}
+    \begin{itemize}
+        \item 多引数の関数
+        \item 文法の整理
+        \item List
+    \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{多引数の関数}
+    カリー化で実現可能
+    \begin{verbatim}
+例:add
+    add := func(x){return func(y){return x + y}}
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}{文法の整理}
+二項演算等をプリミティブな関数として用意すれば，Exprに無理に組み込む必要がなくなる？
+
+もしくはzero，succのみ用意して組んでいく？
+\end{frame}
+
+\begin{frame}[fragile]{Listの実装}
+List型，cons演算子等をプリミティブに用意すれば，再帰呼び出しが可能なのでList内の要素へのアクセスも可能
+
+\end{frame}
+
+\begin{frame}[fragile]{おまけのおまけ}
+    関数が第一級オブジェクト$\to$無名再帰ができる
+    \begin{verbatim}
+
+    \end{verbatim}
+\end{frame}
+
+\section{感想，その他}
+
+\begin{frame}{まとめ，感想}
+実装を通して，言語設計における悩みどころが体感できた
+    \begin{itemize}
+        \item 何を式，何を文とするか
+        \item 各シンボルの導入，構文的な役割(; や{}等)
+        \item 関数実装周りのあれこれ(構文的な位置付け，return，環境，etc...)
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}{参考文献}
+    [1] Thorsten Ball,設樂 洋爾, Go言語でつくるインタプリタ,オライリージャパン,2018年
+
+    [2] Daniel P.Friedman,Matthias Felleisen,元吉 文男,横山 晶一,Scheme手習い,オーム社，2010年
+    
+    [3]
+\end{frame}
+
+%
+\end{document}
+
+%%% End
