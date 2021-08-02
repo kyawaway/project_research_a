@@ -86,6 +86,18 @@ Statement ::= Statement; Statement; ..,; Statement
     \end{verbatim}
 \end{frame}
 
+\begin{frame}[fragile]{これから拡張していく文法}
+実行時の値を保存する環境(実行コンテキスト)，型の情報
+    \begin{verbatim}
+type Env = Map String TypeEnv  
+
+data TypeEnv = TypeInteger Integer 
+             | TypeBool Bool
+             deriving(Show)
+
+    \end{verbatim}
+\end{frame}
+
 \begin{frame}[fragile]{関数実装に必要なもの}
     関数の構文$\to$
     \begin{verbatim}
@@ -118,7 +130,7 @@ AST:
 
 例:C言語の場合
     \begin{verbatim}
-hoge()
+int hoge()
 {
     int temp = 1;
     return temp;
@@ -132,12 +144,12 @@ hoge()を呼ぶと，1が返ってくる$\to$returnで文の評価が終了し�
     \begin{verbatim}
 Rust:
 
-    bodyの最後に式を書き，それが関数の返り値となる
-    returnで処理を中断して値返すことも可能(jump)
+  bodyの最後に式を書くことを許し，それが関数の返り値となる
+  returnで処理を中断して値返すことも可能(jump)
 
 OCaml(関数型言語一般):
 
-    そもそも全部Expr
+  そもそも全部Expr
 
     \end{verbatim}
 必ずしもreturnによるjump機能は必須ではない
@@ -159,6 +171,8 @@ $\to$Maybeモナドの恩恵が受けられそう！
 
 \begin{frame}[fragile]{Returnによるjump機能の実装③}
     \begin{verbatim}
+Seqenceの表現:
+
 evalStatement env (Seq []) = return Nothing   
 
 evalStatement env (Seq (h:t)) 
@@ -215,7 +229,13 @@ FuncのParser・・・愚直に実装できる
 
 ApplyのParser・・・愚直に実装すると...
     \begin{verbatim}
+parseApply :: Parser Expr
+parseApply = do func <- parseExpr 
+                param <- parens parseExpr 
+                return $ Apply func param 
 
+→予約語等で縛っていないため失敗条件(?)が緩い，
+　優先度の高い位置に置くと失敗せずに無限ループに
     \end{verbatim}
 演算子として見る，優先度高め$\to$builldExpressionParserに組み込む
 \end{frame}
@@ -243,6 +263,8 @@ $\to$ (引数)を後置演算子として使用する(微妙？)
 \begin{frame}[fragile]{Funcの評価}
     関数型のようなものを用意し，関数型を返す
     \begin{verbatim}
+イメージ:
+
 evalExpr env (Func arg body) 
     = return (関数型の値)
     \end{verbatim}
@@ -309,7 +331,7 @@ evalExpr env (Apply funcname param) = do
 
 \begin{frame}{関数定義，関数適用の際の環境の動き③}
     \centering 
-    \includegraphics[scale=0.31]{func4.png}
+    \includegraphics[scale=0.31]{func5.png}
 \end{frame}
 
 \begin{frame}{案①の問題点}
@@ -362,9 +384,11 @@ func宣言時，bodyは評価していない
     \begin{verbatim}
 evalExpr env (Func arg body) = 
     return (Closure env arg body)
+
+(Closureの中身は案①のまま)
     \end{verbatim}
 
-    これにより，関数が開けたi
+    これにより，関数が開けた
 
 \end{frame}
 
@@ -426,16 +450,16 @@ getVal envRef var = do
     \begin{verbatim}
 手順:
 
-(1) func_name を評価 $\to$ 関数ならClosureが返ってくる 
+(1) func_name を評価→関数ならClosureが返ってくる 
 
 (2) もしClosure closureEnv arg body が返ってきたら...
 
-    (i)   ClosureEnv に，(arg param)をdefineVarした
+    (i)   ClosureEnv に，(arg param)を組み込んだ
           新たな実行コンテキストをpush 
 
     (ii)  evalStatement newEnv body
 
-    (iii) 使う終わった実行コンテキストはpop
+    (iii) 使い終わった実行コンテキストはpop
     \end{verbatim}
 \end{frame}
 
@@ -588,7 +612,8 @@ $\to$ (ii)のevalStatementだけが異なる，特にdefineVal
     \begin{itemize}
         \item 多引数の関数
         \item 文法の整理
-        \item List
+        \item Listの実装
+        \item アクセス修飾子の実装
     \end{itemize}
 \end{frame}
 
@@ -598,6 +623,7 @@ $\to$ (ii)のevalStatementだけが異なる，特にdefineVal
 例:add
     add := func(x){return func(y){return x + y}}
     \end{verbatim}
+    実際に構文に組み込む際は，これのシュガーとして実装
 \end{frame}
 
 \begin{frame}{文法の整理}
@@ -611,11 +637,8 @@ List型，cons演算子等をプリミティブに用意すれば，再帰呼び
 
 \end{frame}
 
-\begin{frame}[fragile]{おまけのおまけ}
-    関数が第一級オブジェクト$\to$無名再帰ができる
-    \begin{verbatim}
-
-    \end{verbatim}
+\begin{frame}[fragile]{アクセス修飾子の実装}
+グローバルなスコープがスタックの底だとわかっているから，それを元に実装可能？
 \end{frame}
 
 \section{感想，その他}
@@ -635,7 +658,9 @@ List型，cons演算子等をプリミティブに用意すれば，再帰呼び
 
     [2] Daniel P.Friedman,Matthias Felleisen,元吉 文男,横山 晶一,Scheme手習い,オーム社，2010年
     
-    [3]
+    [3] \url{https://en.wikibooks.org/wiki/Write_Yourself_a_Scheme_in_48_Hours}
+
+    最終アクセス:2021年8月1日
 \end{frame}
 
 %
