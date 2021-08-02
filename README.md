@@ -23,7 +23,7 @@
 
 ## 最終発表範囲
 
-[スライド]()
+[スライド](https://github.com/tkyawa/project_research_a/tree/master/final_presen)
 
 #### 4. [func](https://github.com/tkyawa/project_research_a/tree/master/func)
 
