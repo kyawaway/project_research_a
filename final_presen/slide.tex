@@ -606,6 +606,90 @@ $\to$ (ii)のevalStatementだけが異なる，特にdefineVal
 環境をスタックで実装したことにより，スコープの表現と柔軟性が両立し，再帰呼び出しが行えるようになった
 \end{frame}
 
+\section{スコープの挙動についての問題点と修正}
+
+%\subsection{静的スコープと動的スコープ}
+
+\begin{frame}[fragile]{スコープの挙動の問題点}
+    \begin{verbatim}
+>> a := 100
+>> hoge := func(x){return a}
+>> huga := func(a){a := 5; return hoge(1)}
+>> return huga(1)
+    
+
+
+スコープが動的なら，hogeによってaにアクセスすると，huga上のスコープにある(a,5)を参照するが，実際には100が返ってきた
+
+→huga上のhogeの適用に使われた環境には，(a,5)の情報がない
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{静的スコープと動的スコープ}
+    \begin{verbatim}
+静的スコープ:関数の宣言場所によってスコープが決定する
+
+
+
+動的スコープ:関数の呼び出し位置によってスコープが決定する
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{本言語における各スコープの実装}
+    \begin{verbatim}
+静的スコープ:スコープを関数定義の時点で決定
+
+関数宣言の評価では関数型の値を返すため，関数型内に呼び出さ
+れた際の環境の情報を組み込む
+→Closure Env (arg) (body) のような関数型の構成が，
+静的スコープの要素になっている
+
+
+動的スコープ:スコープを関数適用の時点で決定
+
+関数適用の評価では，関数内のbodyの評価に，もとの環境を
+スタックとして考え，別の階層の環境を用意して行った
+(これは動作確認済み)
+    \end{verbatim}
+\end{frame}
+
+\begin{frame}{スコープの観点から見た，問題の原因}
+動的スコープのように環境をスタック状に扱っているのにもかかわらず，内部の関数型では宣言時の環境の情報が入っていて，関数適用時にもその環境に対してスタック操作をしていた
+\end{frame}
+
+\begin{frame}[fragile]{完全な動的スコープへの修正①}
+関数型から，宣言時の環境の情報を削除
+    \begin{verbatim}
+data TypeEnv = ...
+             | Closure String Statement
+
+
+evalExpr env (Func arg body) = return (Closure arg body) 
+    \end{verbatim}
+\end{frame}
+
+
+\begin{frame}[fragile]{完全な動的スコープへの修正②}
+関数適用の評価について，対象を評価時の環境にする
+    \begin{verbatim}
+evalExpr env (Apply funcname param) = do 
+        func <- evalExpr env funcname
+        case func of 
+            Closure arg body -> do
+                value <- evalExpr env param 
+                newenv <- push env arg value
+                result <- evalStatement newenv body
+                garbage <- pop newenv
+                maybe (return Null) return result
+            _ -> error "Error in func"
+    \end{verbatim}
+newenvの対象をenvに変更
+\end{frame}
+
+\begin{frame}{まとめ}
+静的スコープと動的スコープの要素が混じっていたのを分離し，完全な動的スコープとした
+\end{frame}
+
 \section{おまけ}
 
 \begin{frame}{更なる拡張を考える}
@@ -649,7 +733,10 @@ List型，cons演算子等をプリミティブに用意すれば，再帰呼び
         \item 何を式，何を文とするか
         \item 各シンボルの導入，構文的な役割(; や{}等)
         \item 関数実装周りのあれこれ(構文的な位置付け，return，環境，etc...)
+        \item スコープの取り方(動的スコープ，静的スコープ)
     \end{itemize}
+
+プログラム言語における"当たり前"が実装を通してより身近なものになった
 \end{frame}
 
 
