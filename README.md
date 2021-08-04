@@ -2,7 +2,7 @@
 
 プロ研Aの進捗・成果物
 
-最終成果物→[rec](https://github.com/tkyawa/project_research_a/tree/master/rec)
+最終成果物→[dynamic](https://github.com/tkyawa/project_research_a/tree/master/dynamic)
 
 
 ## 中間発表範囲　
@@ -32,4 +32,8 @@
 #### 5. [rec](https://github.com/tkyawa/project_research_a/tree/master/rec)
 
   4の実行時コンテキストを改良
+  
+#### 6. [dynamic](https://github.com/tkyawa/project_research_a/tree/master/dynamic)
+
+  5のスコープの挙動をdynamicなものに修正
   
