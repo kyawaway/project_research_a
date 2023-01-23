@@ -9,8 +9,9 @@
 %
 %
 %%% Begin:
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
 \lstset{
-  language={Haskell}, 
   basicstyle={\ttfamily\small},
   keywordstyle={\color{blue}},
   commentstyle={\color{green}},
@@ -58,13 +59,13 @@
 \begin{frame}{Monadとは}
     Monadの利点・・・
     \begin{itemize}
-        \item \textbf{状態量}の扱いを，副作用を気にせずに行える場合がある
+        \item \textbf{状態}の扱いを，副作用を気にせずに行える場合がある
         \item 関数合成等ができる
     \end{itemize}
 \end{frame}
 
-\begin{frame}[fragile]{状態量について}
-    状態量の例・・・
+\begin{frame}[fragile]{状態について}
+    "状態をもつ"例・・・
     \begin{verbatim}
     
     add: x -> e:e + 1
@@ -75,21 +76,21 @@
 \end{frame}
 
 
-\begin{frame}{状態量について}
+\begin{frame}{状態について}
     \begin{block}{定義1.1}
-    ある値xが状態量を持つことを$T(x)$と表記する
+    ある値xが状態を持つことを$T(x)$と表記する
     \end{block}
 \end{frame}
 
 
-\begin{frame}{状態量を用いたMonad概要図①}
+\begin{frame}{状態を用いたMonad概要図①}
     \centering 
     \includegraphics[scale=0.3]{mid1.png}
 
     $a \to T(b) , b \to T(c)$の関数合成はできない
 \end{frame}
 
-\begin{frame}{状態量を用いたMonad概要図②}
+\begin{frame}{状態を用いたMonad概要図②}
     \centering 
     \includegraphics[scale=0.3]{mid2.png}
 
@@ -573,6 +574,10 @@ x := hoge(2);
 > fromList [("hoge",Closure[("arg1",Assign(Var(x),
   Mul(Var(arg1),Integer(2))))],"x",TypeInteger(4))]
     \end{verbatim}
+\end{frame}
+
+\begin{frame}{参考文献}
+
 \end{frame}
 
 %
