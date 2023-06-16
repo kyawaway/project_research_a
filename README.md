@@ -4,6 +4,12 @@
 
 最終成果物→[dynamic](https://github.com/tkyawa/project_research_a/tree/master/dynamic)
 
+run:
+```bash
+cd (target directory)
+stack ghc Main.hs
+./Main
+```
 
 ## 中間発表範囲　
 
